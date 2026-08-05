@@ -1,8 +1,22 @@
-node_modules
+venv/
+env/
+ENV/
+
 # Keep environment variables out of version control
+
+__pycache__/
+*.py[cod]
+
 .env
+*.env
+
+*.db
+*.sqlite3
+
 
 /generated/prisma
-.agents
-.claude
-.windsurf
+.agents/
+.claude/
+.windsurf/
+.vscode/
+.idea/
