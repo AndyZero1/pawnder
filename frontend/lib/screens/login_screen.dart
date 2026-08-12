@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pawnder/screens/owner_profile_screen.dart';
 import '../constants/colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -21,12 +22,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isSignIn = true;
   bool isLoading = false;
 
-  // reading what user writes
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
-  
-  // IP address for backend
+
   String get baseUrl {
     if (kIsWeb) return 'http://localhost:8000';
     if (Platform.isAndroid) return 'http://10.0.2.2:8000';
@@ -45,7 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (!isSignIn && password != confirmPasswordController.text.trim()) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('The passwords do not match!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('The passwords do not match!')),
+      );
       return;
     }
 
@@ -67,28 +68,39 @@ class _LoginScreenState extends State<LoginScreen> {
       final responseData = jsonDecode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        if (isSignIn && responseData['token'] != null) {
+        if (responseData['token'] != null) {
           final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('jwt_token', responseData['token']);
+          await prefs.setString('jwt_token', responseData['token']);
         }
+
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.green,
-            content: Text(isSignIn ? 'Login successful!' : 'Account successfully created! Please sign in.')),
+            content: Text(
+              isSignIn ? 'Login successful!' : 'Account created! Welcome to Pawnder.',
+            ),
+          ),
         );
 
-        if (!isSignIn) {
-          setState(() {
-            isSignIn = true;
-          });
-        }
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OwnerProfileScreen(userData: responseData),
+          ),
+        );
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: Colors.red,
-          content: Text(responseData['detail'] ?? 'Processing error.')),
+          SnackBar(
+            backgroundColor: Colors.red,
+            content: Text(responseData['detail'] ?? 'Processing error.'),
+          ),
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red,
@@ -96,7 +108,9 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } finally {
-      setState(() => isLoading = false); 
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -122,7 +136,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 20),
-
                   Text(
                     "Pawnder",
                     textAlign: TextAlign.center,
@@ -131,23 +144,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: AppColors.brown,
                     ),
                   ),
-
                   Image.asset(
                     "assets/images/login.png",
                     width: 250,
                   ),
-
                   AuthToggle(
-                      isSignIn: isSignIn,
-                      onChanged: (value) {
-                        setState(() {
-                          isSignIn = value;
-                        });
-                      },
-                    ),
-
+                    isSignIn: isSignIn,
+                    onChanged: (value) {
+                      setState(() {
+                        isSignIn = value;
+                      });
+                    },
+                  ),
                   const SizedBox(height: 15),
-
                   Text(
                     isSignIn
                         ? "Please sign in to continue"
@@ -158,22 +167,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontSize: 16,
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
                   CustomTextField(
-                  controller: emailController,
-                  hint: "E mail / username",
-                  icon: Icons.mail,
-                ),
-
-                 CustomTextField(
-                  controller: passwordController,
-                  hint: "Password",
-                  icon: Icons.lock_open,
-                  obscure: true,
-                ),
-
+                    controller: emailController,
+                    hint: "E mail / username",
+                    icon: Icons.mail,
+                  ),
+                  CustomTextField(
+                    controller: passwordController,
+                    hint: "Password",
+                    icon: Icons.lock_open,
+                    obscure: true,
+                  ),
                   if (!isSignIn)
                     CustomTextField(
                       controller: confirmPasswordController,
@@ -181,13 +186,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: Icons.lock_open,
                       obscure: true,
                     ),
-                      
                   const SizedBox(height: 10),
-                  isLoading ? const Center(child:CircularProgressIndicator()) : PrimaryButton(
-                  text: isSignIn ? "Sign In" : "Sign up",
-                  onPressed: handleAuth,
-                  ),
-  
+                  isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : PrimaryButton(
+                          text: isSignIn ? "Sign In" : "Sign up",
+                          onPressed: handleAuth,
+                        ),
                   if (isSignIn)
                     Align(
                       alignment: Alignment.centerRight,
@@ -202,7 +207,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -227,7 +231,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
                 ],
               ),
@@ -238,4 +241,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
