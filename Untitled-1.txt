@@ -1,0 +1,112 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const PawdarApp());
+}
+
+class PawdarApp extends StatelessWidget {
+  const PawdarApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Pet Match',
+      theme: ThemeData(
+        primarySwatch: Colors.orange,
+      ),
+      home: const ProfileScreen(),
+    );
+  }
+}
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // 1. Datele noastre simulate (Mock Data) - în loc de Back-end
+    final Map<String, dynamic> petProfile = {
+      'nume': 'Max',
+      'rasa': 'Golden Retriever',
+      'varsta': 2,
+      'pozaUrl': 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=500&q=80',
+      'descriere': 'Ador plimbările lungi, să prind mingea și să cunosc prieteni noi!'
+    };
+
+    return Scaffold(
+      backgroundColor: Colors.grey[200],
+      appBar: AppBar(
+        title: const Text('Descoperă', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black,
+      ),
+      body: Center(
+        child: Card(
+          elevation: 8,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          // 2. Containerul principal pentru dimensiunea cardului
+          child: Container(
+            width: 340,
+            height: 550,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              image: DecorationImage(
+                image: NetworkImage(petProfile['pozaUrl']),
+                fit: BoxFit.cover, // Poza va acoperi tot cardul
+              ),
+            ),
+            // 3. Un alt container deasupra pentru a face umbra (gradientul)
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  colors: [Colors.transparent, Colors.black87],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0.6, 1.0], // Umbra începe de la jumătate în jos
+                ),
+              ),
+              padding: const EdgeInsets.all(20),
+              // 4. Așezarea textului în partea de jos
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${petProfile['nume']}, ${petProfile['varsta']} ani',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    petProfile['rasa'],
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    petProfile['descriere'],
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
