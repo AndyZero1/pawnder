@@ -4,10 +4,14 @@ from datetime import date
 from database import engine, get_db
 import models
 from s3_utils import upload_file_to_s3
+from routers import map
+from security import get_current_admin, get_current_user
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Pawnder API")
+
+app.include_router(map.router)
 
 @app.post("/api/upload/id-card/")
 async def upload_id_card(
@@ -97,44 +101,33 @@ async def get_pending_identities(admin_id: str, db: Session = Depends(get_db)):
 @app.post("/api/admin/approve-identity/{target_user_id}")
 async def approve_identity(
     target_user_id: str, 
-    admin_id: str = Form(...), 
-    db: Session = Depends(get_db)
-):
-    # verificare admin
-    admin_user = db.query(models.User).filter(models.User.id == admin_id).first()
-    if not admin_user or admin_user.rol != "ADMIN":
-        raise HTTPException(status_code=403, detail="Acces interzis.")
-        
-    # 2. aprobare utilizator
-    target_user = db.query(models.User).filter(models.User.id == target_user_id).first()
-    if not target_user:
-        raise HTTPException(status_code=404, detail="Utilizatorul țintă nu a fost găsit.")
-        
-    # 3. identitatea user ului salvata
-    target_user.is_identity_verified = True
-    db.commit()
-    
-    return {"message": f"Identitatea utilizatorului {target_user.username} a fost aprobată cu succes!"}
 
-@app.post("/api/admin/reject-identity/{target_user_id}")
-async def reject_identity(
-    target_user_id: str, 
-    admin_id: str = Form(...), 
+    admin_user: models.User = Depends(get_current_admin), 
     db: Session = Depends(get_db)
 ):
-    # verificare admin
-    admin_user = db.query(models.User).filter(models.User.id == admin_id).first()
-    if not admin_user or admin_user.rol != "ADMIN":
-        raise HTTPException(status_code=403, detail="Acces interzis.")
-        
-    # optiunea de respins
+    
     target_user = db.query(models.User).filter(models.User.id == target_user_id).first()
     if not target_user:
         raise HTTPException(status_code=404, detail="Utilizatorul nu a fost găsit.")
         
-    # identitate respinsa
+    target_user.is_identity_verified = True
+    db.commit()
+    
+    return {"message": f"Identitatea utilizatorului {target_user.username} a fost aprobată cu succes de către {admin_user.username}!"}
+
+
+@app.post("/api/admin/reject-identity/{target_user_id}")
+async def reject_identity(
+    target_user_id: str, 
+    admin_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    target_user = db.query(models.User).filter(models.User.id == target_user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Utilizatorul nu a fost găsit.")
+        
     target_user.is_identity_verified = False
     target_user.id_card_url = None
     db.commit()
     
-    return {"message": f"Documentul pentru {target_user.username} a fost respins cu succes."}
+    return {"message": f"Documentul pentru {target_user.username} a fost respins."}
