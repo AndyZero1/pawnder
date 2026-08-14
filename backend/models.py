@@ -163,6 +163,7 @@ class ConsultationMessage(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     consultation_id = Column(String(36), ForeignKey("consultations.id", ondelete="CASCADE"), nullable=False)
     sender_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    content = Column(Text, nullable=False)
     status = Column(Enum(MessageStatus), default=MessageStatus.SENT)
     sent_at = Column(DateTime(timezone=True), server_default=func.now())
 
