@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from database import get_db, SessionLocal
 import models
 from websocket_manager import manager
+from services.ai_service import generate_ai_veterinary_advice
 
 router = APIRouter(
     prefix="/api/consultations",
@@ -30,20 +31,25 @@ def searchRecentActiveVet(db: Session) -> Optional[models.User]:
     # searching vets who are live connected on WS
     online_vet_ids = list(manager.active_connections.keys())
     if online_vet_ids:
-        online_vet = (db.query(models.User).join(models.VeterinaryProfile).filter(models.User.id.in_(online_vet_ids),
-                                                                                  models.User.rol == models.Role.VETERINARY,
-                                                                                  models.VeterinaryProfile.is_checked == True).first())
+        available_online_vets = db.query(models.User).join(models.VeterinaryProfile).filter(
+            models.User.id.in_(online_vet_ids),
+            models.User.rol == models.Role.VETERINARY,
+            models.VeterinaryProfile.is_checked == True,
+            ~models.User.consultations_as_vet.any(models.Consultation.status == models.ConsultationStatus.ACTIVE)
+        ).order_by(models.VeterinaryProfile.last_active_at.desc()).first()
 
-    if online_vet:
-        return online_vet
+        if available_online_vets:
+            return available_online_vets           
 
     # most recently active from database
     return (
         db.query(models.User)
         .join(models.VeterinaryProfile)
         .filter(models.User.rol == models.Role.VETERINARY,
-                models.VeterinaryProfile.is_checked == True).order_by(models.VeterinaryProfile.last_active_at.desc()).first())
-                                                                        
+                models.VeterinaryProfile.is_checked == True,
+                ~models.User.consultations_as_vet.any(models.Consultation.status == models.ConsultationStatus.ACTIVE))
+                .order_by(models.VeterinaryProfile.last_active_at.desc()).first())
+                   
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await manager.connect(user_id, websocket)
@@ -79,10 +85,29 @@ async def send_consultation_message(payload: SendMessageRequest, db: Session = D
     # search recently active vet
     assigned_vet = searchRecentActiveVet(db)
     if not assigned_vet:
+        ai_response_text = generate_ai_veterinary_advice(payload.message)
+
+        forum_post = models.ForumPost(
+            id=str(uuid.uuid4()),
+            user_id=owner.id,
+            title=f"Consultation - {owner.username}",
+            content=payload.message
+        )
+        db.add(forum_post)
+        db.commit()
+        db.refresh(forum_post)
+        
         return {
-            "status": "FALLBACK_AI_FORUM",
+            "status": "FALLBACK_TRIGGERED",
+            "fallback_type": "AI_AND_FORUM",
             "message": "No active veterinarians available at the moment. Redirecting to AI Assistant or Public Forum.",
-            "redirect": "/api/ai/chat"
+            "ai_response": ai_response_text,
+            "forum_action": {
+                "available": True,
+                "suggested_title": f"Question from {owner.username}",
+                "content": payload.message,
+                "endpoint": "/api/forum/create"
+            }
         }
 
     # create or reuse consultation

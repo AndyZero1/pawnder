@@ -169,3 +169,14 @@ class ConsultationMessage(Base):
 
     consultation = relationship("Consultation", back_populates="messages")
     sender = relationship("User")
+
+class ForumPost(Base):
+    __tablename__ = "forum_posts"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    author = relationship("User")
