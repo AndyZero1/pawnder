@@ -43,6 +43,7 @@ class User(Base):
     is_identity_verified = Column(Boolean, default=False)
     photo_url = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    bio = Column(Text, nullable=True)
 
     veterinary_profile = relationship("VeterinaryProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     pets = relationship("Pet", back_populates="owner", cascade="all, delete-orphan")
@@ -76,6 +77,7 @@ class Pet(Base):
     weight = Column(Float, nullable=True)
     photo_url = Column(String(256), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    description = Column(Text, nullable=True)
 
     owner = relationship("User", back_populates="pets")
     medical_records = relationship("MedicalRecord", back_populates="pet", cascade="all, delete-orphan")
@@ -182,3 +184,27 @@ class Review(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     location = relationship("Location", backref="reviews")
+
+class PetSwipe(Base):
+    __tablename__ = "pet_swipes"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    swiper_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    target_pet_id = Column(String(36), ForeignKey("pets.id", ondelete="CASCADE"), nullable=False)
+    is_like = Column(Boolean, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    swiper = relationship("User", foreign_keys=[swiper_id])
+    target_pet = relationship("Pet", foreign_keys=[target_pet_id])
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(100), nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", backref="notifications")
