@@ -3,13 +3,10 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 
-# Importăm din fișierele tale existente
 import models
 from database import get_db
-from s3_utils import upload_file_to_s3  # Asigură-te că funcția se numește exact așa
+from s3_utils import upload_file_to_s3
 
-# Definim router-ul (echivalentul lui 'app' din main.py)
-# Prefixul face ca toate rutele de aici să înceapă automat cu /api/map
 router = APIRouter(
     prefix="/api/map",
     tags=["Harta si Locatii"]
@@ -57,7 +54,7 @@ async def report_missing_pet(
 
     return {"message": "Raportat cu succes!", "location_id": new_location.id}
 
-# 2. Interogare Bounding Box (GET /api/map/locations/)
+# 2. GET /api/map/locations/
 @router.get("/locations/")
 async def get_locations_in_area(
     min_lat: float, max_lat: float, min_lon: float, max_lon: float,
@@ -76,7 +73,7 @@ async def get_locations_in_area(
     locations = query.all()
     return [{"id": loc.id, "title": loc.title, "type": loc.type, "latitude": loc.latitude, "longitude": loc.longitude} for loc in locations]
 
-# 3. Detalii Locație (GET /api/map/locations/{location_id}/details)
+# 3. GET /api/map/locations/{location_id}/details
 @router.get("/locations/{location_id}/details")
 async def get_location_details(location_id: str, db: Session = Depends(get_db)):
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
