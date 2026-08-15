@@ -2,17 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
+from pydantic import BaseModel
 
 import models
 from database import get_db
 from s3_utils import upload_file_to_s3
+from security import get_current_user
 
 router = APIRouter(
     prefix="/api/map",
-    tags=["Harta si Locatii"]
+    tags=["Map and Locations"]
 )
 
-# 1. Raportare animal pierdut (POST /api/map/report-missing/)
+# POST /api/map/report-missing/
+
 @router.post("/report-missing/")
 async def report_missing_pet(
     user_id: str = Form(...),
@@ -25,14 +28,14 @@ async def report_missing_pet(
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Userul nu există.")
+        raise HTTPException(status_code=404, detail="User not found.")
 
     photo_link = None
     if file:
         photo_link = upload_file_to_s3(file, folder="missing_pets")
 
     new_location = models.Location(
-        title=f"Animal pierdut - Raportat de {user.username}",
+        title=f"Missing Pet - Reported by {user.username}",
         description=description,
         type=models.LocationType.MISSING_PET,
         latitude=latitude,
@@ -52,9 +55,11 @@ async def report_missing_pet(
     db.add(new_post)
     db.commit()
 
-    return {"message": "Raportat cu succes!", "location_id": new_location.id}
+    return {"message": "Pet reported successfully!", "location_id": new_location.id}
 
-# 2. GET /api/map/locations/
+
+# GET /api/map/locations/
+
 @router.get("/locations/")
 async def get_locations_in_area(
     min_lat: float, max_lat: float, min_lon: float, max_lon: float,
@@ -73,14 +78,16 @@ async def get_locations_in_area(
     locations = query.all()
     return [{"id": loc.id, "title": loc.title, "type": loc.type, "latitude": loc.latitude, "longitude": loc.longitude} for loc in locations]
 
-# 3. GET /api/map/locations/{location_id}/details
+
+# GET /api/map/locations/{location_id}/details
+
 @router.get("/locations/{location_id}/details")
 async def get_location_details(location_id: str, db: Session = Depends(get_db)):
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
     if not location:
-        raise HTTPException(status_code=404, detail="Locația nu a fost găsită.")
+        raise HTTPException(status_code=404, detail="Location not found.")
 
-    detalii = {
+    details = {
         "id": location.id, "title": location.title, "description": location.description,
         "type": location.type, "latitude": location.latitude, "longitude": location.longitude
     }
@@ -89,8 +96,145 @@ async def get_location_details(location_id: str, db: Session = Depends(get_db)):
         missing_post = db.query(models.MissingPetPost).filter(models.MissingPetPost.location_id == location.id).first()
         if missing_post:
             user = db.query(models.User).filter(models.User.id == missing_post.user_id).first()
-            detalii["missing_pet_info"] = {
+            details["missing_pet_info"] = {
                 "missing_date": missing_post.missing_date, "status": missing_post.status,
-                "photo_url": missing_post.photo_url, "posted_by": user.username if user else "Anonim"
+                "photo_url": missing_post.photo_url, "posted_by": user.username if user else "Anonymous"
             }
-    return detalii
+    return details
+
+class ClinicCreate(BaseModel):
+    name: str
+    details: str
+    latitude: float
+    longitude: float
+
+class ReviewCreate(BaseModel):
+    rating: int
+    text: str
+
+class EventCreate(BaseModel):
+    name: str
+    details: str
+    latitude: float
+    longitude: float
+    start_date: datetime
+    end_time: datetime
+
+class GemCreate(BaseModel):
+    name: str
+    latitude: float
+    longitude: float
+
+
+# endpoints pentru creare locatii
+
+@router.post("/add-clinic/")
+def add_clinic(
+    data: ClinicCreate, 
+    db: Session = Depends(get_db), 
+    user: models.User = Depends(get_current_user)
+):
+    new_clinic_location = models.Location(
+        title=data.name,
+        description=data.details,
+        type=models.LocationType.VET_CLINIC,
+        latitude=data.latitude,
+        longitude=data.longitude
+    )
+    db.add(new_clinic_location)
+    db.commit()
+    return {"message": "Clinic added successfully!", "id": new_clinic_location.id}
+
+
+@router.post("/clinic/{location_id}/add-review/")
+def add_review(
+    location_id: str, 
+    data: ReviewCreate, 
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
+    new_review = models.Review(
+        location_id=location_id,
+        nota=data.rating,
+        text=data.text
+    )
+    db.add(new_review)
+    db.commit()
+    return {"message": "Review saved successfully!"}
+
+
+@router.post("/add-event/")
+def add_event(
+    data: EventCreate, 
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
+    new_location = models.Location(
+        title=data.name,
+        description=data.details,
+        type=models.LocationType.PET_FRIENDLY,
+        latitude=data.latitude,
+        longitude=data.longitude,
+    )
+    db.add(new_location)
+    db.flush() 
+
+    new_event = models.Event(
+        id_organizer=user.id,
+        id_location=new_location.id,
+        title=data.name,
+        description=data.details,
+        date_hour=data.start_date,
+        end_date_hour=data.end_time
+    )
+    db.add(new_event)
+    db.commit()
+    return {"message": "Event successfully created!", "id": new_event.id}
+
+# hidden gems
+
+@router.post("/add-gem/")
+def add_gem(
+    data: GemCreate, 
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
+    new_location = models.Location(
+        title=data.name,
+        type=models.LocationType.HIDDEN_GEM,
+        latitude=data.latitude,
+        longitude=data.longitude
+    )
+    db.add(new_location)
+    db.flush()
+
+    new_gem = models.HiddenGem(
+        location_id=new_location.id,
+        is_exclusive_premium=False 
+    )
+    db.add(new_gem)
+    db.commit()
+    return {"message": "Hidden gem successfully placed!", "gem_id": new_gem.id}
+
+
+@router.post("/gem/{location_id}/claim/")
+def claim_hidden_gem(
+    location_id: str, 
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
+    location = db.query(models.Location).filter(
+        models.Location.id == location_id,
+        models.Location.type == models.LocationType.HIDDEN_GEM
+    ).first()
+
+    if not location:
+        raise HTTPException(status_code=404, detail="Hidden gem not found or already claimed!")
+
+    db.delete(location)
+    db.commit()
+
+    return {
+        "message": "Prize collected successfully! The gem has been removed from the map.",
+        "claimed_by": user.username
+    }

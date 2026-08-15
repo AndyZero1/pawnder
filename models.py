@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, Boolean, DateTime, Enum, ForeignKey, Text, Float, Date
+from sqlalchemy import Column, String, Boolean, DateTime, Enum, ForeignKey, Text, Float, Date, Integer
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -37,7 +37,7 @@ class User(Base):
     email = Column(String(150), unique=True, nullable=False)
     hash_pass = Column(String(255), nullable=False)
     rol = Column(Enum(Role), default=Role.OWNER)
-    date_of_birth = Column(Date, nullable=True)
+    birth_date = Column(DateTime(timezone=True), nullable=True)
     is_premium = Column(Boolean, default=False)
     id_card_url = Column(String(255), nullable=True)
     is_identity_verified = Column(Boolean, default=False)
@@ -142,6 +142,7 @@ class Event(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     date_hour = Column(DateTime(timezone=True), nullable=False)
+    end_date_hour = Column(DateTime(timezone=True), nullable=True)
 
     organizer = relationship("User", back_populates="events")
     location = relationship("Location", back_populates="events")
@@ -170,3 +171,14 @@ class ConsultationMessage(Base):
 
     consultation = relationship("Consultation", back_populates="messages")
     sender = relationship("User")
+
+class Review(Base):
+    __tablename__ = "reviews"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    location_id = Column(String(36), ForeignKey("locations.id", ondelete="CASCADE"), nullable=False)
+    nota = Column(Integer, nullable=False)
+    text = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    location = relationship("Location", backref="reviews")
