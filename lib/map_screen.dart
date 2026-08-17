@@ -103,13 +103,6 @@ class _MapScreenState extends State<MapScreen> {
                   'id': item['id'],
                   'point': latLng,
                   'nume': item['title'],
-<<<<<<< Updated upstream
-                  'dataStart': 'Vezi pe server',
-                  'oraEnd': '',
-                  'detalii':
-                      item['description'] ?? 'Apasă participă pentru detalii',
-                  'expiraLa': DateTime.now().add(const Duration(days: 30)),
-=======
                   'dataStart': item['start_date'] ?? 'Data nespecificată',
                   'oraEnd': item['end_time'] ?? '',
                   'detalii':
@@ -117,7 +110,6 @@ class _MapScreenState extends State<MapScreen> {
                   'expiraLa': item['end_time'] != null
                       ? DateTime.parse(item['end_time'])
                       : DateTime.now().add(const Duration(days: 30)),
->>>>>>> Stashed changes
                 });
               } else if (tipLocatie == 'HIDDEN_GEM') {
                 activeGems.add({
