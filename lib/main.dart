@@ -57,28 +57,35 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String numeAfisat = (ownerInfo['username'] != null && ownerInfo['username']!.isNotEmpty)
+    String numeAfisat =
+        (ownerInfo['username'] != null && ownerInfo['username']!.isNotEmpty)
         ? ownerInfo['username']!
         : ownerInfo['nume']!;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8D7DF), // Noul tău fundal roz
-      
       // Am șters appBar-ul și am pus totul în body!
       body: SafeArea(
         child: Column(
           children: [
-            
             // 1. AICI APELEZI BARA DIN CELĂLALT FIȘIER, ÎNTR-O SINGURĂ LINIE
             ModernNavBar(
               currentPage: 'Profilul Meu', // <--- I-AM SPUS CĂ SUNTEM PE PROFIL
               onMapTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const MapScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    // AICI E TOTUL: Îi dăm hărții și animalele, și numele tău real!
+                    builder: (context) =>
+                        MapScreen(myPets: myPets, userName: numeAfisat),
+                  ),
+                );
               },
               onEditTap: () async {
                 final dateNoi = await showDialog<Map<String, dynamic>>(
                   context: context,
-                  builder: (context) => EditProfileDialog(currentInfo: ownerInfo),
+                  builder: (context) =>
+                      EditProfileDialog(currentInfo: ownerInfo),
                 );
                 if (dateNoi != null) {
                   setState(() => ownerInfo = dateNoi);
@@ -100,37 +107,54 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                             CircleAvatar(
                               radius: 50,
                               backgroundImage: ownerInfo['pozaBytes'] != null
-                                  ? MemoryImage(ownerInfo['pozaBytes']) as ImageProvider
+                                  ? MemoryImage(ownerInfo['pozaBytes'])
+                                        as ImageProvider
                                   : NetworkImage(ownerInfo['pozaUrl']),
                             ),
                             const SizedBox(height: 15),
                             Text(
                               numeAfisat,
-                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
                             ),
                             const SizedBox(height: 5),
                             Text(
                               ownerInfo['bio']!,
-                              style: TextStyle(fontSize: 16, color: Colors.grey[800]), 
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[800],
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 30),
-                      Divider(color: Colors.black.withValues(alpha: 0.1)), 
+                      Divider(color: Colors.black.withValues(alpha: 0.1)),
                       const SizedBox(height: 20),
-                      
-                      const Text('Animalele mele', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+
+                      const Text(
+                        'Animalele mele',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
                       const SizedBox(height: 15),
-                      
+
                       SizedBox(
                         height: 160,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: myPets.length + 1,
                           itemBuilder: (context, index) {
-                            if (index == myPets.length) return _buildAddPetCard();
+                            if (index == myPets.length) {
+                              return _buildAddPetCard();
+                            }
                             return _buildPetCard(context, myPets[index]);
                           },
                         ),
