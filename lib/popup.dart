@@ -271,9 +271,9 @@ void showLostPetPopup(BuildContext context, String nume, String telefon, String 
 }
 
 // ==========================================
-// 3. POP-UP EVENIMENT (Rămâne neschimbat)
+// 3. POP-UP EVENIMENT (Acum primește și ID-ul)
 // ==========================================
-void showEventPopup(BuildContext context, String nume, String dataStart, String oraEnd, String detalii, List<dynamic> listaMeaDeAnimale, String userName) {
+void showEventPopup(BuildContext context, String eventId, String nume, String dataStart, String oraEnd, String detalii, List<dynamic> listaMeaDeAnimale, String userName) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -306,11 +306,12 @@ void showEventPopup(BuildContext context, String nume, String dataStart, String 
           ElevatedButton.icon(
             onPressed: () {
               Navigator.of(context).pop();
-              showPetSelectionSheet(context, nume, listaMeaDeAnimale, userName);
+              // Aici pasăm ID-ul mai departe către lista de animale:
+              showPetSelectionSheet(context, eventId, nume, listaMeaDeAnimale, userName);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             icon: const Icon(Icons.check, color: Colors.white, size: 18),
-            label: const Text('Particip', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            label: const Text('Participă', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       );
