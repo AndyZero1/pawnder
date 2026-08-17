@@ -50,7 +50,8 @@ class _MapScreenState extends State<MapScreen> {
       bool sAstersCeva = false;
 
       activeEvents.removeWhere((eveniment) {
-        if (eveniment['expiraLa'] != null && now.isAfter(eveniment['expiraLa'])) {
+        if (eveniment['expiraLa'] != null &&
+            now.isAfter(eveniment['expiraLa'])) {
           sAstersCeva = true;
           return true;
         }
@@ -69,7 +70,8 @@ class _MapScreenState extends State<MapScreen> {
     double minLon = 20.26;
     double maxLon = 29.72;
 
-    final String apiUrl = 'http://10.0.2.2:8000/api/map/locations/?min_lat=$minLat&max_lat=$maxLat&min_lon=$minLon&max_lon=$maxLon';
+    final String apiUrl =
+        'http://10.0.2.2:8000/api/map/locations/?min_lat=$minLat&max_lat=$maxLat&min_lon=$minLon&max_lon=$maxLon';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -90,7 +92,7 @@ class _MapScreenState extends State<MapScreen> {
           setState(() {
             activeEvents.clear();
             activeGems.clear();
-            customMarkers.clear(); 
+            customMarkers.clear();
 
             for (var item in serverData) {
               final latLng = LatLng(item['latitude'], item['longitude']);
@@ -101,61 +103,93 @@ class _MapScreenState extends State<MapScreen> {
                   'id': item['id'],
                   'point': latLng,
                   'nume': item['title'],
-                  'dataStart': 'Vezi pe server', 
+                  'dataStart': 'Vezi pe server',
                   'oraEnd': '',
-                  'detalii': item['description'] ?? 'Apasă participă pentru detalii',
+                  'detalii':
+                      item['description'] ?? 'Apasă participă pentru detalii',
                   'expiraLa': DateTime.now().add(const Duration(days: 30)),
                 });
-              } 
-              else if (tipLocatie == 'HIDDEN_GEM') {
+              } else if (tipLocatie == 'HIDDEN_GEM') {
                 activeGems.add({
                   'id': item['id'],
                   'point': latLng,
                   'name': item['title'],
                 });
-              } 
-              else if (tipLocatie == 'VET_CLINIC') {
+              } else if (tipLocatie == 'VET_CLINIC') {
                 customMarkers.add(
                   Marker(
                     point: latLng,
-                    width: 55, height: 55,
+                    width: 55,
+                    height: 55,
                     child: GestureDetector(
                       onTap: () {
                         showVetPopup(context, {
                           'id': item['id'],
                           'nume': item['title'],
                           'detalii': item['description'] ?? 'Fără detalii',
-                          'recenzii': <Map<String, dynamic>>[]
+                          'recenzii': <Map<String, dynamic>>[],
                         });
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.white, shape: BoxShape.circle,
+                          color: Colors.white,
+                          shape: BoxShape.circle,
                           border: Border.all(color: Colors.redAccent, width: 3),
-                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: const Center(child: Icon(Icons.local_hospital, color: Colors.redAccent, size: 28)),
+                        child: const Center(
+                          child: Icon(
+                            Icons.local_hospital,
+                            color: Colors.redAccent,
+                            size: 28,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 );
-              } 
-              else if (tipLocatie == 'MISSING_PET') {
+              } else if (tipLocatie == 'MISSING_PET') {
                 customMarkers.add(
                   Marker(
                     point: latLng,
-                    width: 55, height: 55,
+                    width: 55,
+                    height: 55,
                     child: GestureDetector(
                       onTap: () {
-                        showLostPetPopup(context, item['title'], 'Nespecificat', item['description'] ?? '', null);
+                        showLostPetPopup(
+                          context,
+                          item['title'],
+                          'Nespecificat',
+                          item['description'] ?? '',
+                          null,
+                        );
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.white, shape: BoxShape.circle,
+                          color: Colors.white,
+                          shape: BoxShape.circle,
                           border: Border.all(color: Colors.orange, width: 3),
-                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: const Center(child: Icon(Icons.pets, color: Colors.orange, size: 28)),
+                        child: const Center(
+                          child: Icon(
+                            Icons.pets,
+                            color: Colors.orange,
+                            size: 28,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -176,17 +210,27 @@ class _MapScreenState extends State<MapScreen> {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         return;
       }
     }
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 2),
-    ).listen((Position position) {
-      if (mounted) {
-        setState(() => currentLocation = LatLng(position.latitude, position.longitude));
-      }
-    });
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            distanceFilter: 2,
+          ),
+        ).listen((Position position) {
+          if (mounted) {
+            setState(
+              () => currentLocation = LatLng(
+                position.latitude,
+                position.longitude,
+              ),
+            );
+          }
+        });
     Position initialPos = await Geolocator.getCurrentPosition();
     if (mounted) {
       setState(() {
@@ -207,35 +251,80 @@ class _MapScreenState extends State<MapScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
       builder: (BuildContext context) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               const SizedBox(height: 20),
               ListTile(
-                leading: const CircleAvatar(backgroundColor: Colors.orangeAccent, child: Icon(Icons.pets, color: Colors.white)),
-                title: const Text('Animal Pierdut', style: TextStyle(fontWeight: FontWeight.bold)),
-                onTap: () { Navigator.pop(context); setState(() => _currentAddMode = AddingMode.lostPet); },
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.orangeAccent,
+                  child: Icon(Icons.pets, color: Colors.white),
+                ),
+                title: const Text(
+                  'Animal Pierdut',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => _currentAddMode = AddingMode.lostPet);
+                },
               ),
               ListTile(
-                leading: const CircleAvatar(backgroundColor: Colors.purpleAccent, child: Icon(Icons.event, color: Colors.white)),
-                title: const Text('Organizare Eveniment', style: TextStyle(fontWeight: FontWeight.bold)),
-                onTap: () { Navigator.pop(context); setState(() => _currentAddMode = AddingMode.event); },
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.purpleAccent,
+                  child: Icon(Icons.event, color: Colors.white),
+                ),
+                title: const Text(
+                  'Organizare Eveniment',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => _currentAddMode = AddingMode.event);
+                },
               ),
               ListTile(
-                leading: const CircleAvatar(backgroundColor: Colors.redAccent, child: Icon(Icons.local_hospital, color: Colors.white)),
-                title: const Text('Înregistrează Clinică', style: TextStyle(fontWeight: FontWeight.bold)),
-                onTap: () { Navigator.pop(context); setState(() => _currentAddMode = AddingMode.clinic); },
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.redAccent,
+                  child: Icon(Icons.local_hospital, color: Colors.white),
+                ),
+                title: const Text(
+                  'Înregistrează Clinică',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => _currentAddMode = AddingMode.clinic);
+                },
               ),
               const Divider(),
               ListTile(
-                leading: const CircleAvatar(backgroundColor: Colors.amber, child: Icon(Icons.diamond, color: Colors.white)),
-                title: const Text('Ascunde o Comoară', style: TextStyle(fontWeight: FontWeight.bold)),
-                onTap: () { Navigator.pop(context); setState(() => _currentAddMode = AddingMode.gem); },
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.amber,
+                  child: Icon(Icons.diamond, color: Colors.white),
+                ),
+                title: const Text(
+                  'Ascunde o Comoară',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => _currentAddMode = AddingMode.gem);
+                },
               ),
               const SizedBox(height: 10),
             ],
@@ -247,32 +336,54 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final romaniaBounds = LatLngBounds(const LatLng(43.60, 20.26), const LatLng(48.25, 29.72));
+    final romaniaBounds = LatLngBounds(
+      const LatLng(43.60, 20.26),
+      const LatLng(48.25, 29.72),
+    );
     const Distance distanceCalculator = Distance();
 
     List<Marker> visibleGemMarkers = [];
     if (currentLocation != null) {
       for (var gem in activeGems) {
-        if (distanceCalculator.as(LengthUnit.Meter, currentLocation!, gem['point']) <= 50) {
+        if (distanceCalculator.as(
+              LengthUnit.Meter,
+              currentLocation!,
+              gem['point'],
+            ) <=
+            50) {
           visibleGemMarkers.add(
             Marker(
               point: gem['point'],
-              width: 65, height: 65,
+              width: 65,
+              height: 65,
               child: GestureDetector(
                 onTap: () async {
                   // Aici cere 3 argumente, conform update-ului din popup.dart
-                  final success = await showHiddenGemPopup(context, gem['name'], gem['id']);
+                  final success = await showHiddenGemPopup(
+                    context,
+                    gem['name'],
+                    gem['id'],
+                  );
                   if (success == true) {
                     setState(() => activeGems.remove(gem));
                   }
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white, shape: BoxShape.circle,
+                    color: Colors.white,
+                    shape: BoxShape.circle,
                     border: Border.all(color: Colors.amber, width: 4),
-                    boxShadow: [BoxShadow(color: Colors.amber.withValues(alpha: 0.6), blurRadius: 15, spreadRadius: 2)],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.withValues(alpha: 0.6),
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
-                  child: const Center(child: Icon(Icons.diamond, color: Colors.amber, size: 35)),
+                  child: const Center(
+                    child: Icon(Icons.diamond, color: Colors.amber, size: 35),
+                  ),
                 ),
               ),
             ),
@@ -284,24 +395,35 @@ class _MapScreenState extends State<MapScreen> {
     List<Marker> eventMarkers = activeEvents.map((ev) {
       return Marker(
         point: ev['point'],
-        width: 55, height: 55,
+        width: 55,
+        height: 55,
         child: GestureDetector(
           onTap: () => showEventPopup(
             context,
+            ev['id'].toString(), // <--- ASTA LIPSEA!
             ev['nume'],
             ev['dataStart'] ?? '',
             ev['oraEnd'] ?? '',
             ev['detalii'],
             widget.myPets,
-            widget.userName, 
+            widget.userName,
           ),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white, shape: BoxShape.circle,
+              color: Colors.white,
+              shape: BoxShape.circle,
               border: Border.all(color: Colors.purpleAccent, width: 3),
-              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-            child: const Center(child: Icon(Icons.event, color: Colors.purpleAccent, size: 28)),
+            child: const Center(
+              child: Icon(Icons.event, color: Colors.purpleAccent, size: 28),
+            ),
           ),
         ),
       );
@@ -309,11 +431,16 @@ class _MapScreenState extends State<MapScreen> {
 
     Color getFabColor() {
       switch (_currentAddMode) {
-        case AddingMode.lostPet: return Colors.orange;
-        case AddingMode.event: return Colors.purpleAccent;
-        case AddingMode.clinic: return Colors.redAccent;
-        case AddingMode.gem: return Colors.amber;
-        default: return Colors.blueAccent;
+        case AddingMode.lostPet:
+          return Colors.orange;
+        case AddingMode.event:
+          return Colors.purpleAccent;
+        case AddingMode.clinic:
+          return Colors.redAccent;
+        case AddingMode.gem:
+          return Colors.amber;
+        default:
+          return Colors.blueAccent;
       }
     }
 
@@ -325,7 +452,8 @@ class _MapScreenState extends State<MapScreen> {
           FloatingActionButton.small(
             heroTag: "btn_locate",
             onPressed: () {
-              if (currentLocation != null) _mapController.move(currentLocation!, 16.0);
+              if (currentLocation != null)
+                _mapController.move(currentLocation!, 16.0);
             },
             backgroundColor: Colors.white,
             elevation: 4,
@@ -337,10 +465,17 @@ class _MapScreenState extends State<MapScreen> {
             onPressed: () => _showActionMenu(context),
             backgroundColor: getFabColor(),
             elevation: 6,
-            icon: Icon(_currentAddMode != AddingMode.none ? Icons.touch_app : Icons.add, color: Colors.white),
+            icon: Icon(
+              _currentAddMode != AddingMode.none ? Icons.touch_app : Icons.add,
+              color: Colors.white,
+            ),
             label: Text(
               _currentAddMode != AddingMode.none ? 'Atinge harta...' : 'Adaugă',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ),
         ],
@@ -358,26 +493,50 @@ class _MapScreenState extends State<MapScreen> {
               onTap: (tapPosition, tappedPoint) async {
                 if (_currentAddMode == AddingMode.clinic) {
                   // Aici ceream lat și lng
-                  final clinicData = await showAddClinicForm(context, tappedPoint.latitude, tappedPoint.longitude);
+                  final clinicData = await showAddClinicForm(
+                    context,
+                    tappedPoint.latitude,
+                    tappedPoint.longitude,
+                  );
                   if (!context.mounted || clinicData == null) {
                     setState(() => _currentAddMode = AddingMode.none);
                     return;
                   }
-                  final dynamicClinicData = Map<String, dynamic>.from(clinicData);
+                  final dynamicClinicData = Map<String, dynamic>.from(
+                    clinicData,
+                  );
                   dynamicClinicData['recenzii'] = <Map<String, dynamic>>[];
                   setState(() {
                     customMarkers.add(
                       Marker(
-                        point: tappedPoint, width: 55, height: 55,
+                        point: tappedPoint,
+                        width: 55,
+                        height: 55,
                         child: GestureDetector(
                           onTap: () => showVetPopup(context, dynamicClinicData),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.white, shape: BoxShape.circle,
-                              border: Border.all(color: Colors.redAccent, width: 3),
-                              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.redAccent,
+                                width: 3,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            child: const Center(child: Icon(Icons.local_hospital, color: Colors.redAccent, size: 28)),
+                            child: const Center(
+                              child: Icon(
+                                Icons.local_hospital,
+                                color: Colors.redAccent,
+                                size: 28,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -386,7 +545,11 @@ class _MapScreenState extends State<MapScreen> {
                   });
                 } else if (_currentAddMode == AddingMode.lostPet) {
                   // Aici ceream lat și lng
-                  final petData = await showAddLostPetForm(context, tappedPoint.latitude, tappedPoint.longitude);
+                  final petData = await showAddLostPetForm(
+                    context,
+                    tappedPoint.latitude,
+                    tappedPoint.longitude,
+                  );
                   if (!context.mounted || petData == null) {
                     setState(() => _currentAddMode = AddingMode.none);
                     return;
@@ -394,16 +557,40 @@ class _MapScreenState extends State<MapScreen> {
                   setState(() {
                     customMarkers.add(
                       Marker(
-                        point: tappedPoint, width: 55, height: 55,
+                        point: tappedPoint,
+                        width: 55,
+                        height: 55,
                         child: GestureDetector(
-                          onTap: () => showLostPetPopup(context, petData['nume']!, petData['telefon']!, petData['detalii']!, petData['poza'] as Uint8List?),
+                          onTap: () => showLostPetPopup(
+                            context,
+                            petData['nume']!,
+                            petData['telefon']!,
+                            petData['detalii']!,
+                            petData['poza'] as Uint8List?,
+                          ),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.white, shape: BoxShape.circle,
-                              border: Border.all(color: Colors.orange, width: 3),
-                              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.orange,
+                                width: 3,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            child: const Center(child: Icon(Icons.pets, color: Colors.orange, size: 28)),
+                            child: const Center(
+                              child: Icon(
+                                Icons.pets,
+                                color: Colors.orange,
+                                size: 28,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -412,21 +599,26 @@ class _MapScreenState extends State<MapScreen> {
                   });
                 } else if (_currentAddMode == AddingMode.event) {
                   // Aici ceream lat și lng
-                  final eventData = await showAddEventForm(context, tappedPoint.latitude, tappedPoint.longitude);
+                  final eventData = await showAddEventForm(
+                    context,
+                    tappedPoint.latitude,
+                    tappedPoint.longitude,
+                  );
                   if (!context.mounted || eventData == null) {
                     setState(() => _currentAddMode = AddingMode.none);
                     return;
                   }
                   setState(() {
-                    activeEvents.add({
-                      'point': tappedPoint,
-                      ...eventData,
-                    });
+                    activeEvents.add({'point': tappedPoint, ...eventData});
                     _currentAddMode = AddingMode.none;
                   });
                 } else if (_currentAddMode == AddingMode.gem) {
                   // Aici ceream lat și lng
-                  final gemName = await showAddGemForm(context, tappedPoint.latitude, tappedPoint.longitude);
+                  final gemName = await showAddGemForm(
+                    context,
+                    tappedPoint.latitude,
+                    tappedPoint.longitude,
+                  );
                   if (!context.mounted || gemName == null) {
                     setState(() => _currentAddMode = AddingMode.none);
                     return;
@@ -440,7 +632,8 @@ class _MapScreenState extends State<MapScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                urlTemplate:
+                    'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.pawndar',
               ),
               MarkerLayer(
@@ -448,18 +641,26 @@ class _MapScreenState extends State<MapScreen> {
                   if (currentLocation != null)
                     Marker(
                       point: currentLocation!,
-                      width: 24, height: 24,
+                      width: 24,
+                      height: 24,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.blueAccent, shape: BoxShape.circle,
+                          color: Colors.blueAccent,
+                          shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [BoxShadow(color: Colors.blueAccent.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 5)],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blueAccent.withValues(alpha: 0.4),
+                              blurRadius: 10,
+                              spreadRadius: 5,
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ...customMarkers,
                   ...visibleGemMarkers,
-                  ...eventMarkers, 
+                  ...eventMarkers,
                 ],
               ),
             ],
@@ -474,7 +675,13 @@ class _MapScreenState extends State<MapScreen> {
                   decoration: BoxDecoration(
                     color: Colors.pink.shade100,
                     borderRadius: BorderRadius.circular(30),
-                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))],
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Stack(
                     children: [
@@ -483,7 +690,11 @@ class _MapScreenState extends State<MapScreen> {
                         child: Padding(
                           padding: const EdgeInsets.only(left: 8.0),
                           child: IconButton(
-                            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new,
+                              color: Colors.black87,
+                              size: 20,
+                            ),
                             onPressed: () => Navigator.of(context).pop(),
                           ),
                         ),
@@ -491,7 +702,12 @@ class _MapScreenState extends State<MapScreen> {
                       const Center(
                         child: Text(
                           'Pawndar',
-                          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 22),
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                            fontSize: 22,
+                          ),
                         ),
                       ),
                       Align(
@@ -499,11 +715,17 @@ class _MapScreenState extends State<MapScreen> {
                         child: Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: IconButton(
-                            icon: const Icon(Icons.event_note, color: Colors.purple, size: 26),
+                            icon: const Icon(
+                              Icons.event_note,
+                              color: Colors.purple,
+                              size: 26,
+                            ),
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const EventsScreen()),
+                                MaterialPageRoute(
+                                  builder: (context) => const EventsScreen(),
+                                ),
                               );
                             },
                           ),
