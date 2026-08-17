@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data'; // <--- NOU: Asta se folosește pe Web în loc de dart:io
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-Future<Map<String, dynamic>?> showAddLostPetForm(BuildContext context) async {
+Future<Map<String, dynamic>?> showAddLostPetForm(
+  BuildContext context,
+  double lat,
+  double lng,
+) async {
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
   final detailsController = TextEditingController();
 
-  Uint8List? imageBytes; // <--- Aici ținem poza sub formă de memorie
+  Uint8List? imageBytes;
 
   return showDialog<Map<String, dynamic>>(
     context: context,
@@ -33,7 +39,6 @@ Future<Map<String, dynamic>?> showAddLostPetForm(BuildContext context) async {
                       final XFile? pickedFile = await picker.pickImage(source: ImageSource.gallery);
                       
                       if (pickedFile != null) {
-                        // Citim fișierul ca memorie (bytes) ca să meargă pe Chrome!
                         final bytes = await pickedFile.readAsBytes();
                         setState(() {
                           imageBytes = bytes;
@@ -47,7 +52,6 @@ Future<Map<String, dynamic>?> showAddLostPetForm(BuildContext context) async {
                         color: Colors.orange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.orange, width: 1.5, style: BorderStyle.solid),
-                        // Afișăm poza din memorie folosind MemoryImage
                         image: imageBytes != null
                             ? DecorationImage(image: MemoryImage(imageBytes!), fit: BoxFit.cover)
                             : null,
@@ -65,7 +69,6 @@ Future<Map<String, dynamic>?> showAddLostPetForm(BuildContext context) async {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  
                   TextField(
                     controller: nameController,
                     decoration: InputDecoration(
@@ -102,13 +105,65 @@ Future<Map<String, dynamic>?> showAddLostPetForm(BuildContext context) async {
                 child: const Text('Anulează', style: TextStyle(color: Colors.grey)),
               ),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop({
-                    'nume': nameController.text,
-                    'telefon': phoneController.text,
-                    'detalii': detailsController.text,
-                    'poza': imageBytes, // Trimitem memoria mai departe
-                  });
+                onPressed: () async {
+                  if (nameController.text.trim().isEmpty || phoneController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Numele și telefonul sunt obligatorii!')));
+                    return;
+                  }
+
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.orange)),
+                  );
+
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    final String? token = prefs.getString('auth_token');
+                    
+                    // ATENȚIE: Serverul cere user_id explicit aici. Asigură-te că la login îl salvați cu prefs.setString('user_id', ...)
+                    final String userId = prefs.getString('user_id') ?? '0'; 
+
+                    final uri = Uri.parse('http://10.0.2.2:8000/api/map/report-missing/');
+                    var request = http.MultipartRequest('POST', uri);
+
+                    if (token != null) {
+                      request.headers['Authorization'] = 'Bearer $token';
+                    }
+
+                    // Adăugăm câmpurile text
+                    request.fields['user_id'] = userId;
+                    request.fields['latitude'] = lat.toString();
+                    request.fields['longitude'] = lng.toString();
+                    request.fields['description'] = "Nume/Rasă: ${nameController.text.trim()}\nTelefon: ${phoneController.text.trim()}\nDetalii: ${detailsController.text.trim()}";
+                    request.fields['missing_date'] = DateTime.now().toIso8601String();
+
+                    // Adăugăm poza dacă există
+                    if (imageBytes != null) {
+                      request.files.add(
+                        http.MultipartFile.fromBytes('file', imageBytes!, filename: 'pet_image.jpg'),
+                      );
+                    }
+
+                    var streamedResponse = await request.send();
+                    var response = await http.Response.fromStream(streamedResponse);
+
+                    Navigator.pop(context); 
+
+                    if (response.statusCode == 200 || response.statusCode == 201) {
+                      Navigator.of(context).pop({
+                        'nume': nameController.text.trim(),
+                        'telefon': phoneController.text.trim(),
+                        'detalii': detailsController.text.trim(),
+                        'poza': imageBytes, 
+                      });
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Eroare salvare: ${response.statusCode}')));
+                    }
+                  } catch (e) {
+                    Navigator.pop(context); 
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Eroare de conexiune la server.')));
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange, 

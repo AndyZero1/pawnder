@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
-Future<Map<String, dynamic>?> showAddEventForm(BuildContext context) async {
+Future<Map<String, dynamic>?> showAddEventForm(
+  BuildContext context,
+  double lat,
+  double lng,
+) async {
   final nameController = TextEditingController();
   final detailsController = TextEditingController();
   
   DateTime? selectedDate;
   TimeOfDay? startTime;
-  TimeOfDay? endTime; // NOU: Ora de încheiere
+  TimeOfDay? endTime;
 
   return showDialog<Map<String, dynamic>>(
     context: context,
     builder: (BuildContext context) {
       return StatefulBuilder(
         builder: (context, setState) {
-          
           String getFormattedStart() {
             if (selectedDate == null || startTime == null) return 'Alege data și ora de start';
             final day = selectedDate!.day.toString().padLeft(2, '0');
@@ -27,7 +33,7 @@ Future<Map<String, dynamic>?> showAddEventForm(BuildContext context) async {
             if (endTime == null) return 'Alege ora de încheiere';
             final h = endTime!.hour.toString().padLeft(2, '0');
             final m = endTime!.minute.toString().padLeft(2, '0');
-            return h + ':' + m;
+            return '$h:$m';
           }
 
           return AlertDialog(
@@ -52,8 +58,6 @@ Future<Map<String, dynamic>?> showAddEventForm(BuildContext context) async {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  
-                  // 1. Buton Start
                   InkWell(
                     onTap: () async {
                       final pickedDate = await showDatePicker(
@@ -81,8 +85,6 @@ Future<Map<String, dynamic>?> showAddEventForm(BuildContext context) async {
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // 2. Buton End
                   InkWell(
                     onTap: () async {
                       if (selectedDate == null) {
@@ -106,7 +108,6 @@ Future<Map<String, dynamic>?> showAddEventForm(BuildContext context) async {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  
                   TextField(
                     controller: detailsController, maxLines: 3,
                     decoration: InputDecoration(labelText: 'Detalii', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
@@ -117,22 +118,60 @@ Future<Map<String, dynamic>?> showAddEventForm(BuildContext context) async {
             actions: [
               TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Anulează', style: TextStyle(color: Colors.grey))),
               ElevatedButton(
-                onPressed: () {
-                  if (selectedDate == null || startTime == null || endTime == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Completează tot programul!'), backgroundColor: Colors.redAccent));
+                onPressed: () async {
+                  if (nameController.text.trim().isEmpty || selectedDate == null || startTime == null || endTime == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Completează toate datele!'), backgroundColor: Colors.redAccent));
                     return;
                   }
                   
-                  // Creăm momentul exact de expirare a evenimentului
-                  DateTime expirare = DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day, endTime!.hour, endTime!.minute);
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.purpleAccent)),
+                  );
 
-                  Navigator.of(context).pop({
-                    'nume': nameController.text,
-                    'dataStart': getFormattedStart(),
-                    'oraEnd': getFormattedEnd(),
-                    'detalii': detailsController.text,
-                    'expiraLa': expirare, // <--- Aici trimitem ora reală pentru "Ceasul" hărții
-                  });
+                  try {
+                    DateTime startDateTime = DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day, startTime!.hour, startTime!.minute);
+                    DateTime endDateTime = DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day, endTime!.hour, endTime!.minute);
+
+                    final prefs = await SharedPreferences.getInstance();
+                    final String? token = prefs.getString('auth_token');
+                    
+                    final String apiUrl = 'http://10.0.2.2:8000/api/map/add-event/';
+
+                    final response = await http.post(
+                      Uri.parse(apiUrl),
+                      headers: {
+                        'Content-Type': 'application/json',
+                        if (token != null) 'Authorization': 'Bearer $token',
+                      },
+                      body: jsonEncode({
+                        "name": nameController.text.trim(),
+                        "details": detailsController.text.trim(),
+                        "latitude": lat,
+                        "longitude": lng,
+                        "start_date": startDateTime.toIso8601String(),
+                        "end_time": endDateTime.toIso8601String(),
+                      }),
+                    );
+
+                    Navigator.pop(context);
+
+                    if (response.statusCode == 200 || response.statusCode == 201) {
+                      Navigator.of(context).pop({
+                        'nume': nameController.text.trim(),
+                        'dataStart': getFormattedStart(),
+                        'oraEnd': getFormattedEnd(),
+                        'detalii': detailsController.text.trim(),
+                        'expiraLa': endDateTime, 
+                      });
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Eroare salvare: ${response.statusCode}')));
+                    }
+                  } catch (e) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Eroare de conexiune la server.')));
+                  }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
                 child: const Text('Creează', style: TextStyle(color: Colors.white)),
