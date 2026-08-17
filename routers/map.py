@@ -57,7 +57,6 @@ async def report_missing_pet(
 
     return {"message": "Pet reported successfully!", "location_id": new_location.id}
 
-
 # GET /api/map/locations/
 
 @router.get("/locations/")
@@ -76,7 +75,27 @@ async def get_locations_in_area(
         query = query.filter(models.Location.type == location_type)
         
     locations = query.all()
-    return [{"id": loc.id, "title": loc.title, "type": loc.type, "latitude": loc.latitude, "longitude": loc.longitude} for loc in locations]
+    
+    result = []
+    for loc in locations:
+        loc_data = {
+            "id": loc.id, 
+            "title": loc.title, 
+            "type": loc.type, 
+            "latitude": loc.latitude, 
+            "longitude": loc.longitude,
+            "description": loc.description
+        }
+        
+        if loc.type == models.LocationType.PET_FRIENDLY:
+            event = db.query(models.Event).filter(models.Event.id_location == loc.id).first()
+            if event:
+                loc_data["start_date"] = event.date_hour
+                loc_data["end_time"] = event.end_date_hour
+                
+        result.append(loc_data)
+        
+    return result
 
 
 # GET /api/map/locations/{location_id}/details
