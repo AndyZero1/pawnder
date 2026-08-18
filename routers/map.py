@@ -181,35 +181,6 @@ def add_review(
     db.commit()
     return {"message": "Review saved successfully!"}
 
-
-@router.post("/add-event/")
-def add_event(
-    data: EventCreate, 
-    db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user)
-):
-    new_location = models.Location(
-        title=data.name,
-        description=data.details,
-        type=models.LocationType.PET_FRIENDLY,
-        latitude=data.latitude,
-        longitude=data.longitude,
-    )
-    db.add(new_location)
-    db.flush() 
-
-    new_event = models.Event(
-        id_organizer=user.id,
-        id_location=new_location.id,
-        title=data.name,
-        description=data.details,
-        date_hour=data.start_date,
-        end_date_hour=data.end_time
-    )
-    db.add(new_event)
-    db.commit()
-    return {"message": "Event successfully created!", "id": new_event.id}
-
 # hidden gems
 
 @router.post("/add-gem/")
