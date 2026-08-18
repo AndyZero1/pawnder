@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'screens/pet_matching_screen.dart';
 
 class ModernNavBar extends StatelessWidget {
-  final String currentPage; // Aici îi spunem pe ce pagină suntem ('Main Page', 'Profilul Meu', etc.)
+  final String currentPage; 
   final VoidCallback onMapTap;
   final VoidCallback onEditTap;
 
   const ModernNavBar({
     super.key, 
-    required this.currentPage, // A devenit obligatoriu să îi spunem pagina
+    required this.currentPage, 
     required this.onMapTap, 
     required this.onEditTap,
   });
@@ -37,17 +38,17 @@ class ModernNavBar extends StatelessWidget {
             ),
             Row(
               children: [
-                // Verificăm care pagină e activă ca să o colorăm!
+                
                 _navItem('Main Page', isActive: currentPage == 'Main Page', onTap: () {
-                  // Aici va fi codul care te duce pe viitorul Forum
+                 
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Urmează să construim Forumul! 🛠️')));
                 }),
                 const SizedBox(width: 15),
                 
                 _navItem('Profilul Meu', isActive: currentPage == 'Profilul Meu', onTap: () {
-                  // Dacă nu ești deja pe profil, te duce acolo
+              
                   if (currentPage != 'Profilul Meu') {
-                    // Logica de întoarcere la profil
+                   
                   }
                 }),
                 const SizedBox(width: 15),
@@ -56,7 +57,12 @@ class ModernNavBar extends StatelessWidget {
                 const SizedBox(width: 15),
                 
                 _navItem('Tinder', isActive: currentPage == 'Tinder', onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tinder e în lucru! 🚀')));
+                  if (currentPage != 'Tinder') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PetMatchingScreen()),
+                    );
+                  }
                 }),
                 const SizedBox(width: 25),
                 
