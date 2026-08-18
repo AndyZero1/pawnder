@@ -123,14 +123,14 @@ def swipe_pet(
                 # notif pentru celalalt user
                 notif_target = models.Notification(
                     user_id=target_pet.owner_id,
-                    title="It's a Match! 🎉",
+                    title="It's a Match!",
                     message=f"Hey! Someone just liked your pet, {target_pet.name}! You have a new match!"
                 )
                 
                 # notif pentru user ul curent
                 notif_current = models.Notification(
                     user_id=current_user.id,
-                    title="It's a Match! 🎉",
+                    title="It's a Match!",
                     message=f"Congratulations! {target_pet.name} likes you back!"
                 )
                 
