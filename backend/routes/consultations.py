@@ -20,6 +20,11 @@ class SendMessageRequest(BaseModel):
     message: str
     pet_id: Optional[str] = None
 
+class VetReplyRequest(BaseModel):
+    vet_id: str
+    consultation_id: str
+    message: str
+
 class MessageResponse(BaseModel):
     consultation_id: str
     message_id: str
@@ -28,7 +33,6 @@ class MessageResponse(BaseModel):
     delivered_live: bool
 
 def searchRecentActiveVet(db: Session) -> Optional[models.User]:
-    # searching vets who are live connected on WS
     online_vet_ids = list(manager.active_connections.keys())
     if online_vet_ids:
         available_online_vets = db.query(models.User).join(models.VeterinaryProfile).filter(
@@ -41,7 +45,6 @@ def searchRecentActiveVet(db: Session) -> Optional[models.User]:
         if available_online_vets:
             return available_online_vets           
 
-    # most recently active from database
     return (
         db.query(models.User)
         .join(models.VeterinaryProfile)
@@ -49,7 +52,7 @@ def searchRecentActiveVet(db: Session) -> Optional[models.User]:
                 models.VeterinaryProfile.is_checked == True,
                 ~models.User.consultations_as_vet.any(models.Consultation.status == models.ConsultationStatus.ACTIVE))
                 .order_by(models.VeterinaryProfile.last_active_at.desc()).first())
-                   
+                    
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await manager.connect(user_id, websocket)
@@ -74,7 +77,6 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
 
 @router.post("/send", status_code=status.HTTP_201_CREATED)
 async def send_consultation_message(payload: SendMessageRequest, db: Session = Depends(get_db)):
-    # verify owner and premium status
     owner = db.query(models.User).filter(models.User.id == payload.owner_id).first()
     if not owner:
         raise HTTPException(status_code=404, detail="User not found")
@@ -82,7 +84,6 @@ async def send_consultation_message(payload: SendMessageRequest, db: Session = D
     if not owner.is_premium:
         raise HTTPException(status_code=403, detail="Direct veterinary consultations are exclusive to Premium users.")
 
-    # search recently active vet
     assigned_vet = searchRecentActiveVet(db)
     if not assigned_vet:
         ai_response_text = generate_ai_veterinary_advice(payload.message)
@@ -110,7 +111,6 @@ async def send_consultation_message(payload: SendMessageRequest, db: Session = D
             }
         }
 
-    # create or reuse consultation
     consultation = db.query(models.Consultation).filter(models.Consultation.owner_id == owner.id,
                                                         models.Consultation.vet_id == assigned_vet.id,
                                                         models.Consultation.status == models.ConsultationStatus.ACTIVE).first()
@@ -126,7 +126,6 @@ async def send_consultation_message(payload: SendMessageRequest, db: Session = D
         db.commit()
         db.refresh(consultation)
 
-    # save message
     new_message = models.ConsultationMessage(
         id=str(uuid.uuid4()),
         consultation_id=consultation.id,
@@ -138,7 +137,6 @@ async def send_consultation_message(payload: SendMessageRequest, db: Session = D
     db.commit()
     db.refresh(new_message)
 
-    # share event-driven via WS
     message_payload = {
         "event": "NEW_CONSULTATION_MESSAGE",
         "consultation_id": consultation.id,
@@ -157,6 +155,57 @@ async def send_consultation_message(payload: SendMessageRequest, db: Session = D
         "consultation_id": consultation.id,
         "message_id": new_message.id,
         "status": "DELIVERED" if delivered_live else "QUEUED",
-        "assigned_vet_id":assigned_vet.id,
+        "assigned_vet_id": assigned_vet.id,
+        "delivered_live": delivered_live
+    }
+
+
+@router.post("/reply", status_code=status.HTTP_201_CREATED)
+async def vet_reply_message(payload: VetReplyRequest, db: Session = Depends(get_db)):
+    vet = db.query(models.User).filter(models.User.id == payload.vet_id).first()
+    if not vet:
+        raise HTTPException(status_code=404, detail="Veterinarian not found")
+
+    if vet.rol != models.Role.VETERINARY:
+        raise HTTPException(status_code=403, detail="Only veterinarians can reply to consultations.")
+
+    consultation = db.query(models.Consultation).filter(
+        models.Consultation.id == payload.consultation_id,
+        models.Consultation.vet_id == payload.vet_id
+    ).first()
+
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation not found or not assigned to this veterinarian.")
+
+    new_message = models.ConsultationMessage(
+        id=str(uuid.uuid4()),
+        consultation_id=consultation.id,
+        sender_id=vet.id,
+        content=payload.message,
+        status=models.MessageStatus.SENT
+    )
+    db.add(new_message)
+    db.commit()
+    db.refresh(new_message)
+
+    message_payload = {
+        "event": "NEW_CONSULTATION_MESSAGE",
+        "consultation_id": consultation.id,
+        "message_id": new_message.id,
+        "sender_username": f"Dr. {vet.username}",
+        "content": payload.message,
+        "sent_at": new_message.sent_at.isoformat()
+    }
+
+    delivered_live = await manager.send_personal_message(message_payload, consultation.owner_id)
+    if delivered_live:
+        new_message.status = models.MessageStatus.DELIVERED
+        db.commit()
+
+    return {
+        "consultation_id": consultation.id,
+        "message_id": new_message.id,
+        "status": "DELIVERED" if delivered_live else "QUEUED",
+        "assigned_vet_id": vet.id,
         "delivered_live": delivered_live
     }

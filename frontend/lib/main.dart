@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
+import 'screens/consultation_screen.dart';
 
 void main() {
   runApp(const PawnderApp());
@@ -10,9 +10,16 @@ class PawnderApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: LoginScreen(),
+      home: ConsultationScreen(
+        userData: {
+          'id': '93bf9b6e-c51a-4838-936e-9e959fc38336',
+          'username': 'maria.maria',
+          'rol': 'VETERINARY',
+          'is_premium': false,
+        },
+      ),
     );
   }
 }
