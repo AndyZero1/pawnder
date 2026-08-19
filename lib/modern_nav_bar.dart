@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'screens/pet_matching_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/consultation_screen.dart';
 
 PageRouteBuilder smoothRoute(Widget page) {
   return PageRouteBuilder(
@@ -145,6 +146,20 @@ class ModernNavBar extends StatelessWidget {
                           Navigator.pushReplacement(
                             context,
                             smoothRoute(const PetMatchingScreen()),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _navItem(
+                      context,
+                      'Consultations',
+                      isActive: currentPage == 'Consultations',
+                      onTap: () {
+                        if (currentPage != 'Consultations') {
+                          Navigator.pushReplacement(
+                            context,
+                            smoothRoute(const ConsultationScreen()),
                           );
                         }
                       },
