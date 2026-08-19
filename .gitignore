@@ -4,9 +4,18 @@ env/
 .env
 
 db.sqlite3
+*.db
+*.sqlite3
 
 __pycache__/
 *.pyc
 media/
 
 *.json
+
+/generated/prisma
+.agents/
+.claude/
+.windsurf/
+.vscode/
+.idea/
