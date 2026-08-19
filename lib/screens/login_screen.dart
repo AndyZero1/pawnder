@@ -4,7 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/auth_toggle.dart';
 import '../widgets/custom_text_field.dart';
-
+import 'admin_dashboard_screen.dart';
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,70 +16,86 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool isSignIn = true;
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: SizedBox(
-            width: 390,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isCompact = constraints.maxHeight < 760;
+            final bool needScroll = constraints.maxHeight < 560;
+
+            Widget content = SizedBox(
+              width: 390,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 20),
+                  SizedBox(height: isCompact ? 8 : 16),
 
                   Text(
                     "Pawnder",
                     textAlign: TextAlign.center,
                     style: GoogleFonts.pacifico(
-                      fontSize: 60,
+                      fontSize: isCompact ? 44 : 54,
                       color: AppColors.brown,
                     ),
                   ),
 
                   Image.asset(
                     "assets/images/login.png",
-                    width: 250,
+                    height: isCompact ? 135 : 185,
+                    fit: BoxFit.contain,
                   ),
+                  SizedBox(height: isCompact ? 8 : 12),
 
                   AuthToggle(
-                      isSignIn: isSignIn,
-                      onChanged: (value) {
-                        setState(() {
-                          isSignIn = value;
-                        });
-                      },
-                    ),
+                    isSignIn: isSignIn,
+                    onChanged: (value) {
+                      setState(() {
+                        isSignIn = value;
+                      });
+                    },
+                  ),
 
-                  const SizedBox(height: 15),
+                  SizedBox(height: isCompact ? 8 : 12),
 
                   Text(
                     isSignIn
                         ? "Please sign in to continue"
                         : "Please sign up to continue",
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.brown,
-                      fontSize: 16,
+                      fontSize: isCompact ? 14 : 16,
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: isCompact ? 10 : 16),
 
                   CustomTextField(
-                  hint: "E mail / username",
-                  icon: Icons.mail,
-                ),
+                    hint: "E mail / username",
+                    icon: Icons.mail,
+                    controller: emailController,
+                  ),
 
-                 CustomTextField(
-                  hint: "Password",
-                  icon: Icons.lock_open,
-                  obscure: true,
-                ),
+                  CustomTextField(
+                    hint: "Password",
+                    icon: Icons.lock_open,
+                    obscure: true,
+                    controller: passwordController,
+                  ),
 
                   if (!isSignIn)
                     CustomTextField(
@@ -86,11 +103,27 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: Icons.lock_open,
                       obscure: true,
                     ),
-                      
 
                   PrimaryButton(
-                  text: isSignIn ? "Sign In" : "Sign up",
-                  onPressed: () {},
+                    text: isSignIn ? "Sign In" : "Sign up",
+                    onPressed: () {
+                      final email = emailController.text.trim().toLowerCase();
+                      if (email == 'admin' || email == 'admin@pawnder.com') {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AdminDashboardScreen(),
+                          ),
+                        );
+                      } else {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HomeScreen(),
+                          ),
+                        );
+                      }
+                    },
                   ),
 
                   if (isSignIn)
@@ -133,15 +166,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: isCompact ? 10 : 20),
                 ],
               ),
-            ),
-          ),
+            );
+
+            return Center(
+              child: needScroll
+                  ? SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                      child: content,
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: content,
+                    ),
+            );
+          },
         ),
       ),
     );
   }
-
-  }
+}
 

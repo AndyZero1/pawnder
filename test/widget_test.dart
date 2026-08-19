@@ -7,7 +7,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pawndar/main.dart';
+import 'package:pawndar/screens/profile_screen.dart';
 
 void main() {
   testWidgets('OwnerProfileScreen loads smoke test', (WidgetTester tester) async {

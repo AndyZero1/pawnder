@@ -5,12 +5,14 @@ class CustomTextField extends StatelessWidget {
   final String hint;
   final IconData icon;
   final bool obscure;
+  final TextEditingController? controller;
 
   const CustomTextField({
     super.key,
     required this.hint,
     required this.icon,
     this.obscure = false,
+    this.controller,
   });
 
   @override
@@ -18,6 +20,7 @@ class CustomTextField extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextField(
+        controller: controller,
         obscureText: obscure,
         decoration: InputDecoration(
           hintText: hint,

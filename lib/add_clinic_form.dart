@@ -20,7 +20,7 @@ Future<Map<String, String>?> showAddClinicForm(
           children: [
             Icon(Icons.local_hospital, color: Colors.redAccent),
             SizedBox(width: 10),
-            Text('Adaugă Clinică', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text('Add Clinic', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         content: SingleChildScrollView(
@@ -30,7 +30,7 @@ Future<Map<String, String>?> showAddClinicForm(
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
-                  labelText: 'Numele clinicii',
+                  labelText: 'Clinic Name',
                   prefixIcon: const Icon(Icons.business),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -40,7 +40,7 @@ Future<Map<String, String>?> showAddClinicForm(
                 controller: detailsController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  labelText: 'Servicii (ex: vaccin, chirurgie)',
+                  labelText: 'Services (e.g. vaccine, surgery)',
                   prefixIcon: const Icon(Icons.pets, color: Colors.orangeAccent),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -51,18 +51,18 @@ Future<Map<String, String>?> showAddClinicForm(
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Anulează', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Numele clinicii este obligatoriu!')),
+                  const SnackBar(content: Text('Clinic name is required!')),
                 );
                 return;
               }
 
-              // Loading state
+              // loading state
               showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -89,23 +89,23 @@ Future<Map<String, String>?> showAddClinicForm(
                   }),
                 );
 
-                Navigator.pop(context); // Close loading
+                Navigator.pop(context); // close loading
 
                 if (response.statusCode == 200 || response.statusCode == 201) {
-                  // Trimitere cu succes la server, returnam datele pt a le pune si pe harta local
+                  // send to server success, return data to put on map local
                   Navigator.of(context).pop({
                     'nume': nameController.text.trim(),
                     'detalii': detailsController.text.trim(),
                   });
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Eroare salvare: ${response.statusCode}')),
+                    SnackBar(content: Text('Error saving: ${response.statusCode}')),
                   );
                 }
               } catch (e) {
-                Navigator.pop(context); // Close loading
+                Navigator.pop(context); // close loading
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Eroare de conexiune la server.')),
+                  const SnackBar(content: Text('Server connection error.')),
                 );
               }
             },
@@ -113,7 +113,7 @@ Future<Map<String, String>?> showAddClinicForm(
               backgroundColor: Colors.redAccent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Salvează', style: TextStyle(color: Colors.white)),
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
           ),
         ],
       );

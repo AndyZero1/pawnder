@@ -5,9 +5,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'pet_selection_sheet.dart';
 
-// ==========================================
-// 1. POP-UP CLINICĂ VETERINARĂ (CU RECENZII)
-// ==========================================
+
 void showVetPopup(BuildContext context, Map<String, dynamic> clinicData) {
   clinicData['recenzii'] ??= <Map<String, dynamic>>[];
 
@@ -52,27 +50,27 @@ void showVetPopup(BuildContext context, Map<String, dynamic> clinicData) {
                       const Icon(Icons.star, color: Colors.amber, size: 20),
                       const SizedBox(width: 5),
                       Text(
-                        recenzii.isEmpty ? 'Nou' : medie.toStringAsFixed(1),
+                        recenzii.isEmpty ? 'New' : medie.toStringAsFixed(1),
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       const SizedBox(width: 5),
-                      Text('(${recenzii.length} recenzii)', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                      Text('(${recenzii.length} reviews)', style: const TextStyle(color: Colors.grey, fontSize: 13)),
                     ],
                   ),
                   const SizedBox(height: 15),
-                  const Text('Servicii oferite:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text('Services offered:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                   const SizedBox(height: 8),
                   Text(
-                    clinicData['detalii']!.isEmpty ? 'Nu au fost adăugate detalii.' : clinicData['detalii']!,
+                    clinicData['detalii']!.isEmpty ? 'No details have been added.' : clinicData['detalii']!,
                     style: const TextStyle(fontSize: 15),
                   ),
                   const SizedBox(height: 15),
                   const Divider(),
                   const SizedBox(height: 10),
-                  const Text('Recenzii:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Reviews:', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   if (recenzii.isEmpty)
-                    const Text('Fii primul care lasă o recenzie!', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic))
+                    const Text('Be the first to leave a review!', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic))
                   else
                     Flexible(
                       child: ListView.builder(
@@ -107,17 +105,17 @@ void showVetPopup(BuildContext context, Map<String, dynamic> clinicData) {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Închide', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
               ElevatedButton.icon(
                 onPressed: () async {
-                  // Aici pasăm și ID-ul clinicii ca să știe serverul unde pune recenzia
+                
                   final recenzieNoua = await _showAddReviewForm(context, clinicData['id']);
                   if (recenzieNoua != null) {
                     setState(() { recenzii.add(recenzieNoua); });
                   }
                 },
                 icon: const Icon(Icons.rate_review, size: 16, color: Colors.white),
-                label: const Text('Adaugă Recenzie', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                label: const Text('Add Review', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
               ),
             ],
@@ -139,7 +137,7 @@ Future<Map<String, dynamic>?> _showAddReviewForm(BuildContext context, String? l
         builder: (context, setState) {
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('Lasă o recenzie', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: const Text('Leave a review', style: TextStyle(fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -155,16 +153,16 @@ Future<Map<String, dynamic>?> _showAddReviewForm(BuildContext context, String? l
                 const SizedBox(height: 15),
                 TextField(
                   controller: textController, maxLines: 3,
-                  decoration: InputDecoration(hintText: 'Cum a fost experiența ta?', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                  decoration: InputDecoration(hintText: 'How was your experience?', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                 ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Anulează', style: TextStyle(color: Colors.grey))),
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
               ElevatedButton(
                 onPressed: () async {
                   if (textController.text.isNotEmpty && locationId != null) {
-                    // Trimitere către Server
+                    // Send to server
                     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
                     
                     try {
@@ -178,24 +176,24 @@ Future<Map<String, dynamic>?> _showAddReviewForm(BuildContext context, String? l
                         body: jsonEncode({"rating": selectedStars, "text": textController.text}),
                       );
 
-                      Navigator.pop(context); // Close loading
+                      Navigator.pop(context); 
                       
                       if (response.statusCode == 200) {
                         Navigator.pop(context, {'nota': selectedStars, 'text': textController.text});
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Eroare: ${response.statusCode}')));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${response.statusCode}')));
                       }
                     } catch (e) {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Eroare conexiune.')));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Connection error.')));
                     }
                   } else if (locationId == null) {
-                      // Pentru recenzii la clinici locale (abia adaugate, fara refresh)
+                     
                       Navigator.pop(context, {'nota': selectedStars, 'text': textController.text});
                   }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-                child: const Text('Trimite', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: const Text('Submit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
           );
@@ -205,9 +203,7 @@ Future<Map<String, dynamic>?> _showAddReviewForm(BuildContext context, String? l
   );
 }
 
-// ==========================================
-// 2. POP-UP ANIMAL PIERDUT (Rămâne neschimbat, funcționează perfect)
-// ==========================================
+
 void showLostPetPopup(BuildContext context, String nume, String telefon, String detalii, Uint8List? pozaFizica) {
   showDialog(
     context: context,
@@ -219,7 +215,7 @@ void showLostPetPopup(BuildContext context, String nume, String telefon, String 
             const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
             const SizedBox(width: 10),
             Expanded(
-              child: Text('PIERDUT: $nume', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.redAccent), overflow: TextOverflow.ellipsis),
+              child: Text('LOST: $nume', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.redAccent), overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
@@ -237,13 +233,13 @@ void showLostPetPopup(BuildContext context, String nume, String telefon, String 
               Container(
                 height: 80, width: double.infinity,
                 decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
-                child: const Center(child: Text('Fără fotografie', style: TextStyle(color: Colors.grey))),
+                child: const Center(child: Text('No photo', style: TextStyle(color: Colors.grey))),
               ),
               const SizedBox(height: 15),
             ],
-            const Text('Detalii:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            const Text('Details:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 5),
-            Text(detalii.isEmpty ? 'Fără detalii suplimentare.' : detalii, style: const TextStyle(fontSize: 15)),
+            Text(detalii.isEmpty ? 'No additional details.' : detalii, style: const TextStyle(fontSize: 15)),
             const SizedBox(height: 15),
             const Text('Contact:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 5),
@@ -251,18 +247,18 @@ void showLostPetPopup(BuildContext context, String nume, String telefon, String 
               children: [
                 const Icon(Icons.phone, color: Colors.green, size: 20),
                 const SizedBox(width: 8),
-                Text(telefon.isEmpty ? 'Nespecificat' : telefon, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(telefon.isEmpty ? 'Unspecified' : telefon, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ],
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Închide', style: TextStyle(color: Colors.grey))),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close', style: TextStyle(color: Colors.grey))),
           ElevatedButton.icon(
             onPressed: () => Navigator.of(context).pop(),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             icon: const Icon(Icons.call, color: Colors.white, size: 18),
-            label: const Text('Sună', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            label: const Text('Call', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       );
@@ -270,9 +266,7 @@ void showLostPetPopup(BuildContext context, String nume, String telefon, String 
   );
 }
 
-// ==========================================
-// 3. POP-UP EVENIMENT (Acum primește și ID-ul)
-// ==========================================
+
 void showEventPopup(BuildContext context, String eventId, String nume, String dataStart, String oraEnd, String detalii, List<dynamic> listaMeaDeAnimale, String userName) {
   showDialog(
     context: context,
@@ -292,26 +286,26 @@ void showEventPopup(BuildContext context, String eventId, String nume, String da
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [const Icon(Icons.play_circle_fill, color: Colors.green, size: 20), const SizedBox(width: 8), Text('Începe: $dataStart', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))]),
+            Row(children: [const Icon(Icons.play_circle_fill, color: Colors.green, size: 20), const SizedBox(width: 8), Text('Starts: $dataStart', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))]),
             const SizedBox(height: 8),
-            Row(children: [const Icon(Icons.stop_circle, color: Colors.redAccent, size: 20), const SizedBox(width: 8), Text('Se termină la: $oraEnd', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))]),
+            Row(children: [const Icon(Icons.stop_circle, color: Colors.redAccent, size: 20), const SizedBox(width: 8), Text('Ends at: $oraEnd', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))]),
             const SizedBox(height: 15),
-            const Text('Detalii:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            const Text('Details:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 5),
-            Text(detalii.isEmpty ? 'Fără detalii suplimentare.' : detalii, style: const TextStyle(fontSize: 15)),
+            Text(detalii.isEmpty ? 'No additional details.' : detalii, style: const TextStyle(fontSize: 15)),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Închide', style: TextStyle(color: Colors.grey))),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close', style: TextStyle(color: Colors.grey))),
           ElevatedButton.icon(
             onPressed: () {
               Navigator.of(context).pop();
-              // Aici pasăm ID-ul mai departe către lista de animale:
+              
               showPetSelectionSheet(context, eventId, nume, listaMeaDeAnimale, userName);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             icon: const Icon(Icons.check, color: Colors.white, size: 18),
-            label: const Text('Participă', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            label: const Text('Join', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       );
@@ -319,9 +313,7 @@ void showEventPopup(BuildContext context, String eventId, String nume, String da
   );
 }
 
-// ==========================================
-// 4. POP-UP HIDDEN GEM (Actualizat cu ID și Server)
-// ==========================================
+
 Future<bool?> showHiddenGemPopup(BuildContext context, String numeLocatie, String? locationId) {
   return showDialog<bool>(
     context: context,
@@ -333,15 +325,15 @@ Future<bool?> showHiddenGemPopup(BuildContext context, String numeLocatie, Strin
           children: [
             Icon(Icons.emoji_events, color: Colors.amber, size: 50),
             SizedBox(height: 10),
-            Text('Ai ajuns primul!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Colors.amber), textAlign: TextAlign.center),
+            Text('You arrived first!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Colors.amber), textAlign: TextAlign.center),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Felicitări! Ești primul care a descoperit acest loc secret. 🏆\n\nComoara a fost revendicată și va dispărea de pe hartă pentru ceilalți.', style: TextStyle(fontSize: 16), textAlign: TextAlign.center),
+            const Text('Congratulations! You are the first to discover this secret spot! 🏆\n\nThe treasure has been claimed and will disappear from the map for others.', style: TextStyle(fontSize: 16), textAlign: TextAlign.center),
             const SizedBox(height: 20),
-            Text('📍 ${numeLocatie.isEmpty ? 'Locație necunoscută' : numeLocatie}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.green), textAlign: TextAlign.center),
+            Text('📍 ${numeLocatie.isEmpty ? 'Unknown location' : numeLocatie}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.green), textAlign: TextAlign.center),
           ],
         ),
         actions: [
@@ -366,20 +358,20 @@ Future<bool?> showHiddenGemPopup(BuildContext context, String numeLocatie, Strin
                       headers: {if (token != null) 'Authorization': 'Bearer $token'},
                     );
 
-                    Navigator.pop(context); // Close loading
+                    Navigator.pop(context); 
                     if (response.statusCode == 200) {
-                      Navigator.of(context).pop(true); // Întoarce 'true' ca să o șteargă de pe hartă
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Comoara a fost revendicată cu succes!')));
+                      Navigator.of(context).pop(true);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Treasure successfully claimed!')));
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Eroare: ${response.statusCode}')));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${response.statusCode}')));
                     }
                  } catch (e) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Eroare conexiune.')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Connection error.')));
                  }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12), elevation: 5),
-              child: const Text('Colectează Premiul', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              child: const Text('Collect Reward', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ),
         ],

@@ -103,10 +103,10 @@ class _MapScreenState extends State<MapScreen> {
                   'id': item['id'],
                   'point': latLng,
                   'nume': item['title'],
-                  'dataStart': item['start_date'] ?? 'Data nespecificată',
+                  'dataStart': item['start_date'] ?? 'Date not specified',
                   'oraEnd': item['end_time'] ?? '',
                   'detalii':
-                      item['description'] ?? 'Apasă participă pentru detalii',
+                      item['description'] ?? 'Tap to join for details',
                   'expiraLa': item['end_time'] != null
                       ? DateTime.parse(item['end_time'])
                       : DateTime.now().add(const Duration(days: 30)),
@@ -128,7 +128,7 @@ class _MapScreenState extends State<MapScreen> {
                         showVetPopup(context, {
                           'id': item['id'],
                           'nume': item['title'],
-                          'detalii': item['description'] ?? 'Fără detalii',
+                          'detalii': item['description'] ?? 'No details',
                           'recenzii': <Map<String, dynamic>>[],
                         });
                       },
@@ -167,7 +167,7 @@ class _MapScreenState extends State<MapScreen> {
                         showLostPetPopup(
                           context,
                           item['title'],
-                          'Nespecificat',
+                          'Unspecified',
                           item['description'] ?? '',
                           null,
                         );
@@ -202,7 +202,7 @@ class _MapScreenState extends State<MapScreen> {
         }
       }
     } catch (e) {
-      // Eroare silențioasă la fetch
+      
     }
   }
 
@@ -277,7 +277,7 @@ class _MapScreenState extends State<MapScreen> {
                   child: Icon(Icons.pets, color: Colors.white),
                 ),
                 title: const Text(
-                  'Animal Pierdut',
+                  'Lost Pet',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 onTap: () {
@@ -291,7 +291,7 @@ class _MapScreenState extends State<MapScreen> {
                   child: Icon(Icons.event, color: Colors.white),
                 ),
                 title: const Text(
-                  'Organizare Eveniment',
+                  'Organize Event',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 onTap: () {
@@ -305,7 +305,7 @@ class _MapScreenState extends State<MapScreen> {
                   child: Icon(Icons.local_hospital, color: Colors.white),
                 ),
                 title: const Text(
-                  'Înregistrează Clinică',
+                  'Register Clinic',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 onTap: () {
@@ -320,7 +320,7 @@ class _MapScreenState extends State<MapScreen> {
                   child: Icon(Icons.diamond, color: Colors.white),
                 ),
                 title: const Text(
-                  'Ascunde o Comoară',
+                  'Hide a Treasure',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 onTap: () {
@@ -360,7 +360,7 @@ class _MapScreenState extends State<MapScreen> {
               height: 65,
               child: GestureDetector(
                 onTap: () async {
-                  // Aici cere 3 argumente, conform update-ului din popup.dart
+                 
                   final success = await showHiddenGemPopup(
                     context,
                     gem['name'],
@@ -402,7 +402,7 @@ class _MapScreenState extends State<MapScreen> {
         child: GestureDetector(
           onTap: () => showEventPopup(
             context,
-            ev['id'].toString(), // <--- ASTA LIPSEA!
+            ev['id'].toString(),
             ev['nume'],
             ev['dataStart'] ?? '',
             ev['oraEnd'] ?? '',
@@ -472,7 +472,7 @@ class _MapScreenState extends State<MapScreen> {
               color: Colors.white,
             ),
             label: Text(
-              _currentAddMode != AddingMode.none ? 'Atinge harta...' : 'Adaugă',
+              _currentAddMode != AddingMode.none ? 'Tap on the map...' : 'Add',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -494,7 +494,7 @@ class _MapScreenState extends State<MapScreen> {
               cameraConstraint: CameraConstraint.contain(bounds: romaniaBounds),
               onTap: (tapPosition, tappedPoint) async {
                 if (_currentAddMode == AddingMode.clinic) {
-                  // Aici ceream lat și lng
+                
                   final clinicData = await showAddClinicForm(
                     context,
                     tappedPoint.latitude,
@@ -546,7 +546,7 @@ class _MapScreenState extends State<MapScreen> {
                     _currentAddMode = AddingMode.none;
                   });
                 } else if (_currentAddMode == AddingMode.lostPet) {
-                  // Aici ceream lat și lng
+                 
                   final petData = await showAddLostPetForm(
                     context,
                     tappedPoint.latitude,
@@ -600,7 +600,7 @@ class _MapScreenState extends State<MapScreen> {
                     _currentAddMode = AddingMode.none;
                   });
                 } else if (_currentAddMode == AddingMode.event) {
-                  // Aici ceream lat și lng
+                 
                   final eventData = await showAddEventForm(
                     context,
                     tappedPoint.latitude,
@@ -615,7 +615,7 @@ class _MapScreenState extends State<MapScreen> {
                     _currentAddMode = AddingMode.none;
                   });
                 } else if (_currentAddMode == AddingMode.gem) {
-                  // Aici ceream lat și lng
+
                   final gemName = await showAddGemForm(
                     context,
                     tappedPoint.latitude,
@@ -675,7 +675,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: Container(
                   height: 55,
                   decoration: BoxDecoration(
-                    color: Colors.pink.shade100,
+                    color: const Color(0xFFF8D7DF),
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: const [
                       BoxShadow(
@@ -703,7 +703,7 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       const Center(
                         child: Text(
-                          'Pawndar',
+                          'Pawnder',
                           style: TextStyle(
                             color: Colors.black87,
                             fontWeight: FontWeight.w900,
