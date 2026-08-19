@@ -17,7 +17,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
 
-  // Messages list (empty by default - populated by user or backend API)
+  // messages list
   final List<Map<String, dynamic>> _messages = [];
 
   @override
@@ -95,11 +95,11 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                       ),
                       child: Column(
                         children: [
-                          // Top Header: Veterinarian Info & Status
+                          // veterinarian info & Status
                           _buildChatHeader(),
                           const Divider(height: 1),
 
-                          // Messages Area
+                          // messages area
                           Expanded(
                             child: _messages.isEmpty
                                 ? _buildEmptyState()
@@ -118,7 +118,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                                   ),
                           ),
 
-                          // Input Area
+                          
                           const Divider(height: 1),
                           _buildChatInput(),
                         ],
@@ -134,7 +134,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     );
   }
 
-  // --- TOP HEADER ---
+  
   Widget _buildChatHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -180,7 +180,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                   ),
                 ),
                 Text(
-                  'Online • Verified Veterinarian',
+                  'Verified Veterinarian',
                   style: GoogleFonts.outfit(
                     fontSize: 12,
                     color: Colors.green.shade700,
@@ -217,7 +217,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     );
   }
 
-  // --- EMPTY STATE (When no messages are loaded) ---
+  
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
@@ -248,7 +248,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Ask a question, describe your pet\'s symptoms, or share updates directly with the veterinarian.',
+              'Ask a question, describe your pet\'s symptoms, or share updates with the veterinarian.',
               textAlign: TextAlign.center,
               style: GoogleFonts.outfit(
                 fontSize: 13,
@@ -262,7 +262,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     );
   }
 
-  // --- MESSAGE BUBBLE ---
+  
   Widget _buildMessageBubble(Map<String, dynamic> msg, bool isMe) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -319,7 +319,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     );
   }
 
-  // --- CHAT INPUT BAR ---
+  
   Widget _buildChatInput() {
     return Padding(
       padding: const EdgeInsets.all(12),

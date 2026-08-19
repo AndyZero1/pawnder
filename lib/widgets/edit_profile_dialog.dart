@@ -46,16 +46,16 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     super.dispose();
   }
 
-  // --- FUNCȚIA PENTRU AFIȘAREA CALENDARULUI ---
+  
   Future<void> _selecteazaData(BuildContext context) async {
     final DateTime? dataAleasa = await showDatePicker(
       context: context,
-      initialDate: DateTime(2000, 10, 8), // Data de pornire a calendarului
-      firstDate: DateTime(1900), // Anul minim
-      lastDate: DateTime.now(), // Cannot select a future date
+      initialDate: DateTime(2000, 10, 8), 
+      firstDate: DateTime(1900), 
+      lastDate: DateTime.now(), 
       builder: (context, child) {
         return Theme(
-          // Calendar styled with Teal color
+          
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF1F6E6C),
@@ -68,7 +68,6 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
       },
     );
 
-    // If user picked a date, format it as DD/MM/YYYY and display
     if (dataAleasa != null) {
       setState(() {
         String zi = dataAleasa.day.toString().padLeft(2, '0');
@@ -141,8 +140,8 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
               const SizedBox(height: 30),
 
               _buildInputField(
-                'Full Name',
-                'E.g. John Doe',
+                'Nume Complet',
+                'Ex: Nume Prenume',
                 numeController,
                 null,
                 isRequired: true,
@@ -155,8 +154,8 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                 isRequired: true,
               ),
               _buildInputField(
-                'Bio',
-                'Write something about yourself',
+                'Descriere (Bio)',
+                'Scrie ceva despre tine',
                 bioController,
                 null,
                 maxLines: 3,
@@ -170,17 +169,17 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                 isRequired: true,
               ),
 
-              // Modified field for Calendar
+              
               _buildInputField(
-                'Date of birth',
-                'DD/MM/YYYY',
+                'Data nașterii',
+                'ZZ/LL/AAAA',
                 dataNasteriiController,
                 Icons.calendar_today_outlined,
                 isRequired: true,
                 readOnly:
-                    true, // Very important: prevents keyboard from opening
+                    true,
                 onTap: () =>
-                    _selecteazaData(context), // Deschide calendarul la click
+                    _selecteazaData(context), 
               ),
 
               const SizedBox(height: 20),
@@ -218,7 +217,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     );
   }
 
-  // --- AM MODIFICAT FUNCȚIA PENTRU A SUPORTA CALENDAR ȘI STELUȚĂ ---
+  
   Widget _buildInputField(
     String label,
     String hint,
@@ -242,9 +241,9 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
           TextField(
             controller: controller,
             maxLines: maxLines,
-            readOnly: readOnly, // If true, only click, cannot type
+            readOnly: readOnly, 
             onTap:
-                onTap, // Function called on tap (e.g. open calendar)
+                onTap, 
             decoration: InputDecoration(
               hintText: hint,
               prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
@@ -267,11 +266,10 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
             ),
           ),
 
-          // If isRequired is true, show asterisk and message
           if (isRequired) ...[
             const SizedBox(height: 4),
             const Text(
-              '* This field is required',
+              '* Acest câmp este obligatoriu',
               style: TextStyle(color: Colors.grey, fontSize: 11),
             ),
           ],
