@@ -1,15 +1,18 @@
-import 'package:flutter/material.dart';
-import 'package:pawnder/screens/owner_profile_screen.dart';
-import '../constants/colors.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../constants/colors.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/auth_toggle.dart';
 import '../widgets/custom_text_field.dart';
+
+import 'home_screen.dart';
+import 'owner_profile_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -84,12 +87,21 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OwnerProfileScreen(userData: responseData),
-          ),
-        );
+        if (!isSignIn) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OwnerProfileScreen(userData: responseData),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(userData: responseData),
+            ),
+          );
+        }
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -170,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 20),
                   CustomTextField(
                     controller: emailController,
-                    hint: "E mail / username",
+                    hint: "E-mail / username",
                     icon: Icons.mail,
                   ),
                   CustomTextField(
@@ -188,7 +200,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   const SizedBox(height: 10),
                   isLoading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(12.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
                       : PrimaryButton(
                           text: isSignIn ? "Sign In" : "Sign up",
                           onPressed: handleAuth,
@@ -212,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Text(
                         isSignIn
-                            ? "New to Hoomans ? "
+                            ? "New to Pawnder ? "
                             : "Already a user? ",
                         style: const TextStyle(
                           color: AppColors.brown,

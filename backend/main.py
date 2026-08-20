@@ -2,15 +2,21 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import date
-from database import engine, get_db
+
+from database import engine, get_db, SessionLocal
 import models
+
 from s3_utils import upload_file_to_s3
-from routers import map, events
+from routes import auth, admin, consultations, map, events, pets
 from backend.security import get_current_admin, get_current_user
 
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Pawnder API")
+app = FastAPI(
+    title="Pawnder API",
+    description="Backend for Pawnder",
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,6 +28,30 @@ app.add_middleware(
 
 app.include_router(map.router)
 app.include_router(events.router)
+app.include_router(auth.router)
+app.include_router(admin.router)
+app.include_router(consultations.router)
+app.include_router(pets.router)
+
+@app.get("/")
+def root():
+    return {
+        "status": "online",
+        "message": "Pawnder API is running! 🐾",
+        "docs": "/docs"
+    }
+
+@app.on_event("startup")
+def startup_seed():
+    db = SessionLocal()
+    try:
+        from seed_data import seed_database
+        seed_database(db)
+    except Exception as e:
+        print(f"Seed note: {e}")
+    finally:
+        db.close()
+
 
 @app.post("/api/upload/id-card/")
 async def upload_id_card(

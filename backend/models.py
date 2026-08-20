@@ -128,6 +128,7 @@ class MissingPetPost(Base):
     description = Column(Text, nullable=False)
     missing_date = Column(DateTime(timezone=True), nullable=False)
     status = Column(String(50), default="MISSING")
+    photo_url = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="missing_pet_posts")
@@ -192,6 +193,7 @@ class EventAttendee(Base):
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User")
+    event = relationship("Event", backref="attendees")
 
 class EventMessage(Base):
     __tablename__ = "event_messages"
@@ -203,3 +205,14 @@ class EventMessage(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User")
+
+class ForumPost(Base):
+    __tablename__ = "forum_posts"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    author = relationship("User")

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'map_screen.dart'; 
+import 'screens/login_screen.dart';
+import 'map_screen.dart';
 
 void main() {
   runApp(const PawnderApp());
@@ -13,17 +14,14 @@ class PawnderApp extends StatelessWidget {
     return MaterialApp(
       title: 'Pawnder',
       debugShowCheckedModeBanner: false, 
+      
       theme: ThemeData(
         primaryColor: const Color(0xFF1F6E6C),
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1F6E6C)),
+        scaffoldBackgroundColor: const Color(0xFFF8D7DF),
       ),
 
-      home: MapScreen(
-        userName: 'Edyra', 
-        myPets: const [
-          {'nume': 'Max', 'rasa': 'Golden Retriever'},
-        ],
-      ), 
+      home: const LoginScreen(), 
     );
   }
 }

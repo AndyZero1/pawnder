@@ -1,0 +1,211 @@
+from datetime import datetime, timezone
+import uuid
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, status
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from database import get_db, SessionLocal
+import models
+from websocket_manager import manager
+from services.ai_service import generate_ai_veterinary_advice
+
+router = APIRouter(
+    prefix="/api/consultations",
+    tags=["Consultation & Websockets"]
+)
+
+class SendMessageRequest(BaseModel):
+    owner_id: str
+    message: str
+    pet_id: Optional[str] = None
+
+class VetReplyRequest(BaseModel):
+    vet_id: str
+    consultation_id: str
+    message: str
+
+class MessageResponse(BaseModel):
+    consultation_id: str
+    message_id: str
+    status: str
+    assigned_vet_id: Optional[str]
+    delivered_live: bool
+
+def searchRecentActiveVet(db: Session) -> Optional[models.User]:
+    online_vet_ids = list(manager.active_connections.keys())
+    if online_vet_ids:
+        available_online_vets = db.query(models.User).join(models.VeterinaryProfile).filter(
+            models.User.id.in_(online_vet_ids),
+            models.User.rol == models.Role.VETERINARY,
+            models.VeterinaryProfile.is_checked == True,
+            ~models.User.consultations_as_vet.any(models.Consultation.status == models.ConsultationStatus.ACTIVE)
+        ).order_by(models.VeterinaryProfile.last_active_at.desc()).first()
+
+        if available_online_vets:
+            return available_online_vets           
+
+    return (
+        db.query(models.User)
+        .join(models.VeterinaryProfile)
+        .filter(models.User.rol == models.Role.VETERINARY,
+                models.VeterinaryProfile.is_checked == True,
+                ~models.User.consultations_as_vet.any(models.Consultation.status == models.ConsultationStatus.ACTIVE))
+                .order_by(models.VeterinaryProfile.last_active_at.desc()).first())
+                    
+@router.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    await manager.connect(user_id, websocket)
+
+    db = SessionLocal()
+    try:
+        vet_profile = db.query(models.VeterinaryProfile).filter(models.VeterinaryProfile.user_id == user_id).first()
+        if vet_profile:
+            vet_profile.last_active_at = datetime.now(timezone.utc)
+            db.commit()
+
+        while True:
+            data = await websocket.receive_text()
+            if vet_profile:
+                vet_profile.last_active_at = datetime.now(timezone.utc)
+                db.commit()
+    except WebSocketDisconnect:
+        manager.disconnect(user_id)
+    finally:
+        db.close()
+
+
+@router.post("/send", status_code=status.HTTP_201_CREATED)
+async def send_consultation_message(payload: SendMessageRequest, db: Session = Depends(get_db)):
+    owner = db.query(models.User).filter(models.User.id == payload.owner_id).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not owner.is_premium:
+        raise HTTPException(status_code=403, detail="Direct veterinary consultations are exclusive to Premium users.")
+
+    assigned_vet = searchRecentActiveVet(db)
+    if not assigned_vet:
+        ai_response_text = generate_ai_veterinary_advice(payload.message)
+
+        forum_post = models.ForumPost(
+            id=str(uuid.uuid4()),
+            user_id=owner.id,
+            title=f"Consultation - {owner.username}",
+            content=payload.message
+        )
+        db.add(forum_post)
+        db.commit()
+        db.refresh(forum_post)
+        
+        return {
+            "status": "FALLBACK_TRIGGERED",
+            "fallback_type": "AI_AND_FORUM",
+            "message": "No active veterinarians available at the moment. Redirecting to AI Assistant or Public Forum.",
+            "ai_response": ai_response_text,
+            "forum_action": {
+                "available": True,
+                "suggested_title": f"Question from {owner.username}",
+                "content": payload.message,
+                "endpoint": "/api/forum/create"
+            }
+        }
+
+    consultation = db.query(models.Consultation).filter(models.Consultation.owner_id == owner.id,
+                                                        models.Consultation.vet_id == assigned_vet.id,
+                                                        models.Consultation.status == models.ConsultationStatus.ACTIVE).first()
+
+    if not consultation:
+        consultation = models.Consultation(
+            id=str(uuid.uuid4()),
+            owner_id=owner.id,
+            vet_id=assigned_vet.id,
+            status=models.ConsultationStatus.ACTIVE
+        )
+        db.add(consultation)
+        db.commit()
+        db.refresh(consultation)
+
+    new_message = models.ConsultationMessage(
+        id=str(uuid.uuid4()),
+        consultation_id=consultation.id,
+        sender_id=owner.id,
+        content=payload.message,
+        status=models.MessageStatus.SENT
+    )
+    db.add(new_message)
+    db.commit()
+    db.refresh(new_message)
+
+    message_payload = {
+        "event": "NEW_CONSULTATION_MESSAGE",
+        "consultation_id": consultation.id,
+        "message_id": new_message.id,
+        "sender_username": owner.username,
+        "content": payload.message,
+        "sent_at": new_message.sent_at.isoformat()
+    }
+
+    delivered_live = await manager.send_personal_message(message_payload, assigned_vet.id)
+    if delivered_live:
+        new_message.status = models.MessageStatus.DELIVERED
+        db.commit()
+
+    return {
+        "consultation_id": consultation.id,
+        "message_id": new_message.id,
+        "status": "DELIVERED" if delivered_live else "QUEUED",
+        "assigned_vet_id": assigned_vet.id,
+        "delivered_live": delivered_live
+    }
+
+
+@router.post("/reply", status_code=status.HTTP_201_CREATED)
+async def vet_reply_message(payload: VetReplyRequest, db: Session = Depends(get_db)):
+    vet = db.query(models.User).filter(models.User.id == payload.vet_id).first()
+    if not vet:
+        raise HTTPException(status_code=404, detail="Veterinarian not found")
+
+    if vet.rol != models.Role.VETERINARY:
+        raise HTTPException(status_code=403, detail="Only veterinarians can reply to consultations.")
+
+    consultation = db.query(models.Consultation).filter(
+        models.Consultation.id == payload.consultation_id,
+        models.Consultation.vet_id == payload.vet_id
+    ).first()
+
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation not found or not assigned to this veterinarian.")
+
+    new_message = models.ConsultationMessage(
+        id=str(uuid.uuid4()),
+        consultation_id=consultation.id,
+        sender_id=vet.id,
+        message=payload.message,
+        status=models.MessageStatus.SENT
+    )
+    db.add(new_message)
+    db.commit()
+    db.refresh(new_message)
+
+    message_payload = {
+        "event": "NEW_CONSULTATION_MESSAGE",
+        "consultation_id": consultation.id,
+        "message_id": new_message.id,
+        "sender_username": f"Dr. {vet.username}",
+        "mesage": payload.message,
+        "sent_at": new_message.sent_at.isoformat()
+    }
+
+    delivered_live = await manager.send_personal_message(message_payload, consultation.owner_id)
+    if delivered_live:
+        new_message.status = models.MessageStatus.DELIVERED
+        db.commit()
+
+    return {
+        "consultation_id": consultation.id,
+        "message_id": new_message.id,
+        "status": "DELIVERED" if delivered_live else "QUEUED",
+        "assigned_vet_id": vet.id,
+        "delivered_live": delivered_live
+    }
