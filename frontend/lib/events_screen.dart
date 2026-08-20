@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'event_details_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
@@ -14,28 +15,51 @@ class _EventsScreenState extends State<EventsScreen> {
   final Color primaryColor = const Color(0xFF1F6E6C);
 
   // Lista demonstrativă
-  final List<Map<String, dynamic>> _events = [
-    {
-      'id': '1',
-      'title': 'Întâlnire Corgi & Prietenii',
-      'location': 'Parcul Herăstrău',
-      'date': 'Sâmbătă, 15 Oct',
-      'time': '10:00',
-      'attendees': 12,
-      'icon': Icons.pets,
-      'color': Colors.orangeAccent,
-    },
-    {
-      'id': '2',
-      'title': 'Târg de Adopții Animale',
-      'location': 'Clinica VetLife',
-      'date': 'Duminică, 16 Oct',
-      'time': '14:00',
-      'attendees': 45,
-      'icon': Icons.volunteer_activism,
-      'color': Colors.pinkAccent,
-    },
-  ];
+  List<Map<String, dynamic>> _events = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRealEvents();
+  }
+
+  Future<void> _fetchRealEvents() async {
+    try {
+      final url = 'http://127.0.0.1:8000/api/events/nearby/?min_lat=-90&max_lat=90&min_lon=-180&max_lon=180';
+      
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        
+        setState(() {
+          _events = data.map((ev) {
+
+            DateTime? startDate = ev['start_date'] != null ? DateTime.parse(ev['start_date']) : null;
+            String formattedDate = startDate != null ? '${startDate.day}.${startDate.month}.${startDate.year}' : 'Fără dată';
+            String formattedTime = startDate != null ? '${startDate.hour.toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')}' : '--:--';
+
+            return {
+              'id': ev['event_id'],
+              'title': ev['title'] ?? 'Eveniment',
+              'location': ev['location_name'] ?? 'Locație necunoscută',
+              'date': formattedDate,
+              'time': formattedTime,
+              'attendees': ev['attendees_count'] ?? 0,
+              'icon': Icons.pets,
+              'color': Colors.purpleAccent, 
+            };
+          }).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Error: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -146,26 +170,20 @@ class _EventsScreenState extends State<EventsScreen> {
 
             const SizedBox(height: 10),
 
-            // --- LISTA DE EVENIMENTE (FEED) ---
             Expanded(
-              child: _events.isEmpty
+              child: _isLoading 
+                ? Center(child: CircularProgressIndicator(color: primaryColor))
+                : _events.isEmpty
                   ? Center(
                       child: Text(
                         'Niciun eveniment momentan.\nFii primul care organizează unul!',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
                       ),
                     )
                   : ListView.builder(
                       physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.only(
-                        left: 20,
-                        right: 20,
-                        bottom: 40,
-                      ),
+                      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 40),
                       itemCount: _events.length,
                       itemBuilder: (context, index) {
                         return _buildModernEventCard(_events[index]);

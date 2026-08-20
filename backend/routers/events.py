@@ -71,8 +71,10 @@ def create_event(
 def get_nearby_events(
     min_lat: float, max_lat: float, min_lon: float, max_lon: float,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+   # current_user: models.User = Depends(get_current_user)
 ):
+    current_user = db.query(models.User).first()
+    
     events = db.query(models.Event).join(models.Location).filter(
         models.Location.latitude >= min_lat,
         models.Location.latitude <= max_lat,
@@ -95,8 +97,9 @@ def get_nearby_events(
             "event_id": ev.id,
             "title": ev.title,
             "description": ev.description,
-            "start_date": ev.date_hour,
-            "end_time": ev.end_date_hour,
+            "location_name": loc.title,
+            "start_date": ev.date_hour.isoformat() if ev.date_hour else None,
+            "end_time": ev.end_date_hour.isoformat() if ev.end_date_hour else None,
             "latitude": loc.latitude,
             "longitude": loc.longitude,
             "organizer": {"id": organizer.id, "name": organizer.username},
