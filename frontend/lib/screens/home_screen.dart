@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../modern_nav_bar.dart';
 import '../map_screen.dart';
 import '../events_screen.dart';
+import 'consultation_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -51,7 +52,10 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final username = (userData['user'] != null ? userData['user']['username'] : userData['username']) ?? 'User';
+    final username = (userData['user'] != null
+            ? userData['user']['username']
+            : userData['username']) ??
+        'User';
 
     return Scaffold(
       backgroundColor: _bgPink,
@@ -80,9 +84,16 @@ class HomeScreen extends StatelessWidget {
                       ),
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 900),
-                        child: isWide
-                            ? _buildWideLayout(context)
-                            : _buildNarrowLayout(context),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildConsultationBanner(context),
+                            const SizedBox(height: 20),
+                            isWide
+                                ? _buildWideLayout(context)
+                                : _buildNarrowLayout(context),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -91,6 +102,102 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildConsultationBanner(BuildContext context) {
+    final role = (userData['user'] != null
+            ? userData['user']['rol']
+            : userData['rol']) ??
+        'OWNER';
+
+    final isVet = role == 'VETERINARY';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1F6E6C), Color(0xFF2E9491)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isVet ? Icons.medical_services_rounded : Icons.health_and_safety_rounded,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isVet ? 'Active Consultations Queue' : 'Need Veterinary Advice?',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isVet
+                      ? 'Check incoming requests and reply to pet owners live.'
+                      : 'Chat live with verified vets or get AI medical guidance.',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                smoothRoute(ConsultationScreen(userData: userData)),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: _teal,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: Text(
+              isVet ? 'Open' : 'Start',
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -136,7 +243,10 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildClinicsSection(BuildContext context) {
-    final username = (userData['user'] != null ? userData['user']['username'] : userData['username']) ?? 'User';
+    final username = (userData['user'] != null
+            ? userData['user']['username']
+            : userData['username']) ??
+        'User';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,7 +280,7 @@ class HomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: Colors.black.withOpacity(0.06),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -182,7 +292,7 @@ class HomeScreen extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: (event['color'] as Color).withValues(alpha: 0.15),
+                color: (event['color'] as Color).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(event['icon'] as IconData,
@@ -237,7 +347,10 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildClinicCard(BuildContext context, Map<String, dynamic> clinic) {
-    final username = (userData['user'] != null ? userData['user']['username'] : userData['username']) ?? 'User';
+    final username = (userData['user'] != null
+            ? userData['user']['username']
+            : userData['username']) ??
+        'User';
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -254,7 +367,7 @@ class HomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: Colors.black.withOpacity(0.06),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -266,7 +379,7 @@ class HomeScreen extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
+                color: Colors.red.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const Icon(Icons.local_hospital_rounded,
@@ -317,8 +430,8 @@ class HomeScreen extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                   decoration: BoxDecoration(
                     color: clinic['open'] == true
-                        ? Colors.green.withValues(alpha: 0.12)
-                        : Colors.red.withValues(alpha: 0.12),
+                        ? Colors.green.withOpacity(0.12)
+                        : Colors.red.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
