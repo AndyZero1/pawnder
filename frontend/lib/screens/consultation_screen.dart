@@ -28,7 +28,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
   final List<Map<String, dynamic>> _messages = [];
-  
+
   bool _isLoading = false;
   WebSocketChannel? _channel;
   String? _activeConsultationId;
@@ -47,24 +47,76 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   }
 
   String get userId {
-    final user = widget.userData['user'] ?? widget.userData;
-    return user['id'] ?? '';
+    final data = widget.userData;
+    if (data['user'] != null && data['user'] is Map) {
+      return data['user']['id']?.toString() ?? data['user']['user_id']?.toString() ?? '';
+    }
+    return data['id']?.toString() ?? data['user_id']?.toString() ?? '';
   }
 
   String get userRole {
-    final user = widget.userData['user'] ?? widget.userData;
-    return user['rol'] ?? 'OWNER';
+    final data = widget.userData;
+    if (data['user'] != null && data['user'] is Map) {
+      return data['user']['rol']?.toString() ?? 'OWNER';
+    }
+    return data['rol']?.toString() ?? 'OWNER';
   }
 
   String get username {
-    final user = widget.userData['user'] ?? widget.userData;
-    return user['username'] ?? 'User';
+    final data = widget.userData;
+    if (data['user'] != null && data['user'] is Map) {
+      return data['user']['username']?.toString() ?? 'User';
+    }
+    return data['username']?.toString() ?? 'User';
   }
 
   @override
   void initState() {
     super.initState();
+    _fetchActiveConsultation();
     _initWebSocket();
+  }
+
+  String _cleanDoctorName(String? rawName) {
+    if (rawName == null || rawName.trim().isEmpty) return 'Veterinarian';
+    String clean = rawName.trim();
+    while (clean.toLowerCase().startsWith('dr.') || clean.toLowerCase().startsWith('dr ')) {
+      clean = clean.substring(clean.startsWith('dr.') ? 3 : 2).trim();
+    }
+    return 'Dr. $clean';
+  }
+
+  Future<void> _fetchActiveConsultation() async {
+    if (userId.isEmpty) return;
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/consultations/active/$userId'));
+      if (response.statusCode == 200 && response.body != 'null') {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _activeConsultationId = data['consultation_id'];
+          _activeClientName = data['other_party'];
+          
+          _messages.clear();
+          for (var msg in data['messages']) {
+            final isMe = msg['sender_id'] == userId;
+            _messages.add({
+              'sender': isMe
+                  ? 'Me'
+                  : (userRole == 'OWNER' ? _cleanDoctorName(data['other_party']) : (data['other_party'] ?? 'Client')),
+              'content': msg['content'],
+              'isMe': isMe,
+              'isAI': false,
+              'time': msg['sent_at'].toString().length >= 16
+                  ? msg['sent_at'].toString().substring(11, 16)
+                  : _getCurrentTimeString(),
+            });
+          }
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      debugPrint('Error fetching active consultation: $e');
+    }
   }
 
   void _initWebSocket() {
@@ -76,16 +128,35 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       _channel!.stream.listen(
         (data) {
           final decoded = jsonDecode(data);
+          
           if (decoded['event'] == 'NEW_CONSULTATION_MESSAGE') {
             setState(() {
               _activeConsultationId = decoded['consultation_id'];
               _activeClientName = decoded['sender_username'] ?? 'Client';
-              
+
+              final displayName = userRole == 'OWNER'
+                  ? _cleanDoctorName(decoded['sender_username'])
+                  : (decoded['sender_username'] ?? 'Client');
+
               _messages.add({
-                'sender': decoded['sender_username'] ?? 'User',
+                'sender': displayName,
                 'content': decoded['content'],
                 'isMe': false,
                 'isAI': false,
+                'time': _getCurrentTimeString(),
+              });
+            });
+            _scrollToBottom();
+          } 
+          else if (decoded['event'] == 'CONSULTATION_ENDED') {
+            setState(() {
+              _activeConsultationId = null;
+              _activeClientName = null;
+              _messages.add({
+                'sender': 'System',
+                'content': 'The consultation has been closed.',
+                'isMe': false,
+                'isAI': true,
                 'time': _getCurrentTimeString(),
               });
             });
@@ -96,6 +167,30 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       );
     } catch (e) {
       debugPrint('Couldn\'t connect to WebSocket: $e');
+    }
+  }
+
+  Future<void> _endConsultation() async {
+    if (_activeConsultationId == null) return;
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/consultations/$_activeConsultationId/end'),
+      );
+      if (response.statusCode == 200) {
+        setState(() {
+          _activeConsultationId = null;
+          _activeClientName = null;
+          _messages.add({
+            'sender': 'System',
+            'content': 'You ended the consultation.',
+            'isMe': true,
+            'isAI': false,
+            'time': _getCurrentTimeString(),
+          });
+        });
+      }
+    } catch (e) {
+      debugPrint('Error ending consultation: $e');
     }
   }
 
@@ -123,10 +218,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
 
     if (userRole == 'VETERINARY' && _activeConsultationId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Colors.orange,
-          content: Text('No active consultation selected to reply to.'),
-        ),
+        const SnackBar(backgroundColor: Colors.orange, content: Text('No active consultation selected to reply to.')),
       );
       return;
     }
@@ -146,9 +238,8 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
 
     try {
       if (userRole == 'VETERINARY') {
-        final url = Uri.parse('$baseUrl/api/consultations/reply');
         final response = await http.post(
-          url,
+          Uri.parse('$baseUrl/api/consultations/reply'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'vet_id': userId,
@@ -156,21 +247,18 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             'message': text,
           }),
         );
-        final data = jsonDecode(response.body);
         if (response.statusCode != 200 && response.statusCode != 201) {
-          throw Exception(data['detail'] ?? 'Failed to send reply.');
+          throw Exception('Failed to send reply.');
         }
       } else {
-        final url = Uri.parse('$baseUrl/api/consultations/send');
         final response = await http.post(
-          url,
+          Uri.parse('$baseUrl/api/consultations/send'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'owner_id': userId,
             'message': text,
           }),
         );
-
         final data = jsonDecode(response.body);
 
         if (response.statusCode == 200 || response.statusCode == 201) {
@@ -189,17 +277,12 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             });
             _scrollToBottom();
           }
-        } else {
-          throw Exception(data['detail'] ?? 'Error sending message.');
         }
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red,
-          content: Text('Error: $e'),
-        ),
+        SnackBar(backgroundColor: Colors.red, content: Text('Error: $e')),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -228,9 +311,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
               userData: widget.userData,
               onMapTap: () => Navigator.push(
                 context,
-                smoothRoute(
-                  MapScreen(myPets: const [], userName: username),
-                ),
+                smoothRoute(MapScreen(myPets: const [], userName: username)),
               ),
             ),
             Expanded(
@@ -260,15 +341,11 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                                 ? _buildEmptyState()
                                 : ListView.builder(
                                     controller: _chatScrollController,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 14,
-                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                     itemCount: _messages.length,
                                     itemBuilder: (context, index) {
                                       final msg = _messages[index];
-                                      final isMe = msg['isMe'] == true;
-                                      return _buildMessageBubble(msg, isMe);
+                                      return _buildMessageBubble(msg, msg['isMe'] == true);
                                     },
                                   ),
                           ),
@@ -307,19 +384,20 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                   size: 24,
                 ),
               ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  width: 11,
-                  height: 11,
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+              if (_activeConsultationId != null)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(width: 14),
@@ -330,7 +408,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                 Text(
                   isVet
                       ? (_activeClientName != null ? 'Patient: $_activeClientName' : 'Waiting for Patients')
-                      : 'Veterinary Consultation',
+                      : (_activeClientName != null ? _cleanDoctorName(_activeClientName) : 'Veterinary Consultation'),
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -348,6 +426,22 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
               ],
             ),
           ),
+          if (_activeConsultationId != null)
+            ElevatedButton.icon(
+              onPressed: _endConsultation,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade50,
+                foregroundColor: Colors.red,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              icon: const Icon(Icons.stop_circle_outlined, size: 18),
+              label: Text(
+                'End',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
         ],
       ),
     );
@@ -403,6 +497,24 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
 
   Widget _buildMessageBubble(Map<String, dynamic> msg, bool isMe) {
     final isAI = msg['isAI'] == true;
+    final isSystem = msg['sender'] == 'System';
+
+    if (isSystem) {
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            msg['content'],
+            style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+          ),
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),

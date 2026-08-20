@@ -16,17 +16,18 @@ TRUNCATE TABLE locations;
 TRUNCATE TABLE users;
 SET FOREIGN_KEY_CHECKS = 1;
 
+-- parola este parola123
 INSERT INTO users (id, username, email, hash_pass, rol, is_premium, is_identity_verified, photo_url, created_at)
 VALUES
-('10000000-0000-0000-0000-000000000001', 'admin.pawnder', 'admin@pawnder.com', '$2b$12$08K99D9nU.jCDCQ00nWLjOXNWh88rxwOZ6Km0yINOutXPi6ogL/HC', 'ADMIN', 1, 1, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80', NOW()),
+('10000000-0000-0000-0000-000000000001', 'admin.pawnder', 'admin@pawnder.com', '$2b$12$mZs/U0omoZRlbC1U/j5JUOxnImN1d72sMFrcGdR2Z8LuZ9bfyTeku', 'ADMIN', 1, 1, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80', NOW()),
 
-('20000000-0000-0000-0000-000000000002', 'dr.maria', 'maria.vet@pawnder.com', '$2b$12$08K99D9nU.jCDCQ00nWLjOXNWh88rxwOZ6Km0yINOutXPi6ogL/HC', 'VETERINARY', 0, 1, 'https://images.unsplash.com/photo-1594824813624-9b2f6ef0d880?auto=format&fit=crop&w=300&q=80', NOW()),
+('20000000-0000-0000-0000-000000000002', 'dr.maria', 'maria.vet@pawnder.com', '$2b$12$mZs/U0omoZRlbC1U/j5JUOxnImN1d72sMFrcGdR2Z8LuZ9bfyTeku', 'VETERINARY', 0, 1, 'https://images.unsplash.com/photo-1594824813624-9b2f6ef0d880?auto=format&fit=crop&w=300&q=80', NOW()),
 
-('30000000-0000-0000-0000-000000000003', 'daniel.apostol', 'daniel.apostol@pawnder.com', '$2b$12$08K99D9nU.jCDCQ00nWLjOXNWh88rxwOZ6Km0yINOutXPi6ogL/HC', 'OWNER', 1, 1, 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80', NOW()),
+('30000000-0000-0000-0000-000000000003', 'daniel.apostol', 'daniel.apostol@pawnder.com', '$2b$12$mZs/U0omoZRlbC1U/j5JUOxnImN1d72sMFrcGdR2Z8LuZ9bfyTeku', 'OWNER', 1, 1, 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80', NOW()),
 
-('40000000-0000-0000-0000-000000000004', 'miruna.mihai', 'miruna.mihai@pawnder.com', '$2b$12$08K99D9nU.jCDCQ00nWLjOXNWh88rxwOZ6Km0yINOutXPi6ogL/HC', 'OWNER', 0, 0, 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80', NOW()),
+('40000000-0000-0000-0000-000000000004', 'miruna.mihai', 'miruna.mihai@pawnder.com', '$2b$12$mZs/U0omoZRlbC1U/j5JUOxnImN1d72sMFrcGdR2Z8LuZ9bfyTeku', 'OWNER', 0, 0, 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=30<PASSWORD>', NOW()),
 
-('50000000-0000-0000-0000-000000000005', 'alex.radu', 'alex.radu@pawnder.com', '$2b$12$08K99D9nU.jCDCQ00nWLjOXNWh88rxwOZ6Km0yINOutXPi6ogL/HC', 'OWNER', 0, 0, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80', NOW());
+('50000000-0000-0000-0000-000000000005', 'alex.radu', 'alex.radu@pawnder.com', '$2b$12$mZs/U0omoZRlbC1U/j5JUOxnImN1d72sMFrcGdR2Z8LuZ9bfyTeku', 'OWNER', 0, 0, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80', NOW());
 
 INSERT INTO veterinary_profiles (id, user_id, cabinet_name, is_checked, last_active_at)
 VALUES
