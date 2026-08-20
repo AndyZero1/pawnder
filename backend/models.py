@@ -37,6 +37,7 @@ class User(Base):
     email = Column(String(150), unique=True, nullable=False)
     hash_pass = Column(String(255), nullable=False)
     rol = Column(Enum(Role), default=Role.OWNER)
+    bio = Column(Text, nullable=True)
     birth_date = Column(DateTime(timezone=True), nullable=True)
     is_premium = Column(Boolean, default=False)
     id_card_url = Column(String(255), nullable=True)

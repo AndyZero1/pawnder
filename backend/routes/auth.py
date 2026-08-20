@@ -56,7 +56,6 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="An account with this email already exists. :(")
 
     computed_username = user_data.email.split("@")[0]
-
     hashed_pass = hash_password(user_data.password)
 
     new_user = models.User(
@@ -76,11 +75,22 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
         db.add(vet_profile)
         db.commit()
 
+    token = create_jwt_token({
+        "userId": new_user.id,
+        "email": new_user.email,
+        "rol": new_user.rol.value if hasattr(new_user.rol, 'value') else new_user.rol
+    })
+
     return {
         "message": "User successfully registered!",
-        "user_id": new_user.id,
-        "email": new_user.email,
-        "rol": new_user.rol
+        "token": token,
+        "user": {
+            "id": new_user.id,
+            "username": new_user.username,
+            "email": new_user.email,
+            "rol": new_user.rol.value if hasattr(new_user.rol, 'value') else new_user.rol,
+            "is_premium": new_user.is_premium
+        }
     }
 
 ### POST /api/auth/login

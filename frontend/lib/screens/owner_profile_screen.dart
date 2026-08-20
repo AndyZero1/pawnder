@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import '../modern_nav_bar.dart';
 import '../map_screen.dart';
@@ -32,28 +34,118 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
   }
 
   String get userId {
-    final user = widget.userData?['user'] ?? widget.userData ?? {};
-    return user['id'] ?? '';
+    final data = widget.userData ?? {};
+    if (data['user'] != null && data['user'] is Map) {
+      return data['user']['id']?.toString() ?? data['user']['user_id']?.toString() ?? '';
+    }
+    return data['id']?.toString() ?? data['user_id']?.toString() ?? '';
   }
 
   @override
   void initState() {
     super.initState();
-    final user = widget.userData?['user'] ?? widget.userData ?? {};
+    final user = (widget.userData?['user'] is Map)
+        ? widget.userData!['user']
+        : (widget.userData ?? {});
 
     ownerInfo = {
-      'id': user['id'] ?? '',
+      'id': userId,
       'nume': user['username'] ?? 'User',
       'username': user['username'] ?? '',
       'pozaUrl': user['photo_url'] ??
           'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-      'bio': 'Pet lover, Pawnder member.',
+      'bio': user['bio'] ?? 'Pet lover, Pawnder member.',
       'email': user['email'] ?? '',
-      'dataNasterii': '',
+      'dataNasterii': user['birth_date'] ?? '',
       'pozaBytes': null,
     };
 
+    _fetchUserProfile();
     _fetchPets();
+  }
+
+  Future<String?> _uploadImageBytes(Uint8List bytes, String filename) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/users/upload-photo');
+      final request = http.MultipartRequest('POST', uri);
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: filename,
+          contentType: MediaType('image', 'jpeg'),
+        ),
+      );
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['url'];
+      }
+    } catch (e) {
+      debugPrint('Upload error: $e');
+    }
+    return null;
+  }
+
+  Future<void> _fetchUserProfile() async {
+    if (userId.isEmpty) return;
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/users/$userId'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          ownerInfo['username'] = data['username'] ?? ownerInfo['username'];
+          ownerInfo['nume'] = data['username'] ?? ownerInfo['nume'];
+          ownerInfo['email'] = data['email'] ?? ownerInfo['email'];
+          ownerInfo['bio'] = data['bio'] ?? ownerInfo['bio'];
+          ownerInfo['dataNasterii'] = data['birth_date'] ?? '';
+          if (data['photo_url'] != null && data['photo_url'].toString().isNotEmpty) {
+            ownerInfo['pozaUrl'] = data['photo_url'];
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching user profile: $e');
+    }
+  }
+
+  Future<void> _updateUserProfile(Map<String, dynamic> dateNoi) async {
+    String? photoUrl = dateNoi['pozaUrl'];
+    
+    if (dateNoi['pozaBytes'] != null) {
+      final uploadedUrl = await _uploadImageBytes(dateNoi['pozaBytes'], 'avatar.jpg');
+      if (uploadedUrl != null) {
+        photoUrl = uploadedUrl;
+      }
+    }
+
+    setState(() {
+      ownerInfo = Map.from(dateNoi);
+      if (photoUrl != null) ownerInfo['pozaUrl'] = photoUrl;
+    });
+
+    if (userId.isEmpty) return;
+
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/users/$userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': dateNoi['username'] ?? dateNoi['nume'],
+          'email': dateNoi['email'],
+          'bio': dateNoi['bio'],
+          'birth_date': dateNoi['dataNasterii'],
+          'photo_url': photoUrl,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        _fetchUserProfile();
+      }
+    } catch (e) {
+      debugPrint('Error updating profile: $e');
+    }
   }
 
   Future<void> _fetchPets() async {
@@ -85,6 +177,13 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
   }
 
   Future<void> _addNewPet(Map<String, dynamic> animalNou) async {
+    String? photoUrl = animalNou['pozaUrl'];
+    
+    if (animalNou['pozaBytes'] != null) {
+      final uploaded = await _uploadImageBytes(animalNou['pozaBytes'], 'pet.jpg');
+      if (uploaded != null) photoUrl = uploaded;
+    }
+
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/pets/'),
@@ -96,16 +195,12 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
           'breed': animalNou['rasa'],
           'age': double.tryParse(animalNou['varsta'].toString()) ?? 0.0,
           'weight': double.tryParse(animalNou['greutate'].toString()) ?? 0.0,
-          'photo_url': animalNou['pozaUrl'],
+          'photo_url': photoUrl,
         }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         _fetchPets();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(backgroundColor: Colors.red, content: Text('Eroare la salvarea animalului.')),
-        );
       }
     } catch (e) {
       debugPrint('Error creating pet: $e');
@@ -134,9 +229,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
     if (pet['pozaBytes'] != null) {
       return MemoryImage(pet['pozaBytes']);
     }
-    return NetworkImage(
-      pet['pozaUrl'] ?? 'https://images.unsplash.com/photo-1543852786-1cf6624b9987',
-    );
+    return NetworkImage(pet['pozaUrl'] ?? 'https://images.unsplash.com/photo-1543852786-1cf6624b9987');
   }
 
   @override
@@ -186,7 +279,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              ownerInfo['bio']!,
+                              ownerInfo['bio'] ?? '',
                               style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                               textAlign: TextAlign.center,
                             ),
@@ -198,7 +291,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                                   builder: (_) => EditProfileDialog(currentInfo: ownerInfo),
                                 );
                                 if (dateNoi != null) {
-                                  setState(() => ownerInfo = dateNoi);
+                                  _updateUserProfile(dateNoi);
                                 }
                               },
                               icon: const Icon(Icons.edit_outlined, size: 15),
@@ -295,7 +388,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              pet['nume'],
+              pet['nume'] ?? '',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             Text(
