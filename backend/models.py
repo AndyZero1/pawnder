@@ -37,7 +37,7 @@ class User(Base):
     email = Column(String(150), unique=True, nullable=False)
     hash_pass = Column(String(255), nullable=False)
     rol = Column(Enum(Role), default=Role.OWNER)
-    birth_date = Column(DateTime(timezone=True), nullable=True)
+    date_of_birth = Column(DateTime(timezone=True), nullable=True)
     is_premium = Column(Boolean, default=False)
     id_card_url = Column(String(255), nullable=True)
     is_identity_verified = Column(Boolean, default=False)
@@ -182,3 +182,24 @@ class Review(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     location = relationship("Location", backref="reviews")
+
+class EventAttendee(Base):
+    __tablename__ = "event_attendees"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    event_id = Column(String(36), ForeignKey("eveniments.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    joined_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")
+
+class EventMessage(Base):
+    __tablename__ = "event_messages"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    event_id = Column(String(36), ForeignKey("eveniments.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    message = Column(Text, nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")

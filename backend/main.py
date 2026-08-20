@@ -1,17 +1,27 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import date
 from database import engine, get_db
 import models
 from s3_utils import upload_file_to_s3
-from routers import map
+from routers import map, events
 from backend.security import get_current_admin, get_current_user
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Pawnder API")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(map.router)
+app.include_router(events.router)
 
 @app.post("/api/upload/id-card/")
 async def upload_id_card(

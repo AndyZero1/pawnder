@@ -124,7 +124,7 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
                     // ATENȚIE: Serverul cere user_id explicit aici. Asigură-te că la login îl salvați cu prefs.setString('user_id', ...)
                     final String userId = prefs.getString('user_id') ?? '0'; 
 
-                    final uri = Uri.parse('http://10.0.2.2:8000/api/map/report-missing/');
+                    final uri = Uri.parse('http://127.0.0.1:8000/api/map/report-missing/');
                     var request = http.MultipartRequest('POST', uri);
 
                     if (token != null) {

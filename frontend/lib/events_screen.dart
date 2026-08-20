@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'event_details_screen.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
@@ -14,6 +16,7 @@ class _EventsScreenState extends State<EventsScreen> {
   // Lista demonstrativă
   final List<Map<String, dynamic>> _events = [
     {
+      'id': '1',
       'title': 'Întâlnire Corgi & Prietenii',
       'location': 'Parcul Herăstrău',
       'date': 'Sâmbătă, 15 Oct',
@@ -23,6 +26,7 @@ class _EventsScreenState extends State<EventsScreen> {
       'color': Colors.orangeAccent,
     },
     {
+      'id': '2',
       'title': 'Târg de Adopții Animale',
       'location': 'Clinica VetLife',
       'date': 'Duminică, 16 Oct',
@@ -286,7 +290,27 @@ class _EventsScreenState extends State<EventsScreen> {
 
               // Butonul de participare sub formă de capsulă (Pill Button)
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    final String? token = prefs.getString('auth_token');
+                    
+                    final String joinUrl = 'http://127.0.0.1:8000/api/events/${event['id']}/join/';
+
+                    await http.post(
+                      Uri.parse(joinUrl),
+                      headers: {
+                        'Content-Type': 'application/json',
+                        if (token != null) 'Authorization': 'Bearer $token',
+                      },
+                    );
+                  } catch (e) {
+                    print("Eroare la conectarea cu serverul pentru Join: $e");
+                  }
+
+                  if (!context.mounted) return;
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(

@@ -54,9 +54,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
         if (token != null) 'Authorization': 'Bearer $token',
       };
 
-  final membersUrl = 'http://127.0.0.1:8000/api/map/event/${widget.eventId}/members/';
-  final chatUrl = 'http://127.0.0.1:8000/api/map/event/${widget.eventId}/chat/';
-
+  final membersUrl = 'http://127.0.0.1:8000/api/events/${widget.eventId}/members/';
+  final chatUrl = 'http://127.0.0.1:8000/api/events/${widget.eventId}/chat/';
       // Cerem participanții
       final membersResponse = await http.get(Uri.parse(membersUrl), headers: headers);
       if (membersResponse.statusCode == 200) {
@@ -115,7 +114,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       final prefs = await SharedPreferences.getInstance();
       final String? token = prefs.getString('auth_token');
       
-      final String chatUrl = 'http://10.0.2.2:8000/api/map/event/${widget.eventId}/chat/';
+     final String chatUrl = 'http://127.0.0.1:8000/api/events/${widget.eventId}/chat/';
 
       final response = await http.post(
         Uri.parse(chatUrl),

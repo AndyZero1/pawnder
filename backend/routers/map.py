@@ -151,7 +151,7 @@ class GemCreate(BaseModel):
 def add_clinic(
     data: ClinicCreate, 
     db: Session = Depends(get_db), 
-    user: models.User = Depends(get_current_user)
+   # user: models.User = Depends(get_current_user)
 ):
     new_clinic_location = models.Location(
         title=data.name,

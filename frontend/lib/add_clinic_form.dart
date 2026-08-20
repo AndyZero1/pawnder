@@ -73,7 +73,7 @@ Future<Map<String, String>?> showAddClinicForm(
                 final prefs = await SharedPreferences.getInstance();
                 final String? token = prefs.getString('auth_token');
                 
-                final String apiUrl = 'http://10.0.2.2:8000/api/map/add-clinic/';
+                final String apiUrl = 'http://127.0.0.1:8000/api/map/add-clinic/';
 
                 final response = await http.post(
                   Uri.parse(apiUrl),

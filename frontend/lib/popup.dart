@@ -5,9 +5,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'pet_selection_sheet.dart';
 
-// ==========================================
-// 1. POP-UP CLINICĂ VETERINARĂ (CU RECENZII)
-// ==========================================
+
 void showVetPopup(BuildContext context, Map<String, dynamic> clinicData) {
   clinicData['recenzii'] ??= <Map<String, dynamic>>[];
 
@@ -205,9 +203,7 @@ Future<Map<String, dynamic>?> _showAddReviewForm(BuildContext context, String? l
   );
 }
 
-// ==========================================
-// 2. POP-UP ANIMAL PIERDUT (Rămâne neschimbat, funcționează perfect)
-// ==========================================
+
 void showLostPetPopup(BuildContext context, String nume, String telefon, String detalii, Uint8List? pozaFizica) {
   showDialog(
     context: context,

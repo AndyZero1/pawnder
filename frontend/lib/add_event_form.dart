@@ -137,7 +137,7 @@ Future<Map<String, dynamic>?> showAddEventForm(
                     final prefs = await SharedPreferences.getInstance();
                     final String? token = prefs.getString('auth_token');
                     
-                    final String apiUrl = 'http://10.0.2.2:8000/api/map/add-event/';
+                    final String apiUrl = 'http://127.0.0.1:8000/api/events/create/';
 
                     final response = await http.post(
                       Uri.parse(apiUrl),

@@ -69,6 +69,8 @@ Future<String?> showAddGemForm(
                   }),
                 );
 
+                if (!context.mounted) return;
+
                 Navigator.pop(context); 
 
                 if (response.statusCode == 200 || response.statusCode == 201) {
@@ -79,6 +81,8 @@ Future<String?> showAddGemForm(
                   );
                 }
               } catch (e) {
+                if(!context.mounted) return;
+
                 Navigator.pop(context); 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Eroare de conexiune la server.')),
