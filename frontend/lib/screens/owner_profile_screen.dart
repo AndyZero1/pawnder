@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
 import '../modern_nav_bar.dart';
 import '../map_screen.dart';
@@ -18,7 +22,19 @@ class OwnerProfileScreen extends StatefulWidget {
 
 class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
   late Map<String, dynamic> ownerInfo;
-  final List<Map<String, dynamic>> myPets = [];
+  List<Map<String, dynamic>> myPets = [];
+  bool _isLoadingPets = false;
+
+  String get baseUrl {
+    if (kIsWeb) return 'http://localhost:8000';
+    if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+    return 'http://localhost:8000';
+  }
+
+  String get userId {
+    final user = widget.userData?['user'] ?? widget.userData ?? {};
+    return user['id'] ?? '';
+  }
 
   @override
   void initState() {
@@ -26,6 +42,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
     final user = widget.userData?['user'] ?? widget.userData ?? {};
 
     ownerInfo = {
+      'id': user['id'] ?? '',
       'nume': user['username'] ?? 'User',
       'username': user['username'] ?? '',
       'pozaUrl': user['photo_url'] ??
@@ -35,6 +52,75 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
       'dataNasterii': '',
       'pozaBytes': null,
     };
+
+    _fetchPets();
+  }
+
+  Future<void> _fetchPets() async {
+    if (userId.isEmpty) return;
+    setState(() => _isLoadingPets = true);
+
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/pets/$userId'));
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        setState(() {
+          myPets = data.map((item) => {
+            'id': item['id'],
+            'nume': item['name'],
+            'rasa': item['breed'] ?? '',
+            'specie': item['species'] ?? '',
+            'varsta': item['age']?.toString() ?? '0',
+            'greutate': item['weight']?.toString() ?? '0',
+            'pozaUrl': item['photo_url'] ?? 'https://images.unsplash.com/photo-1543852786-1cf6624b9987',
+            'pozaBytes': null,
+          }).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching pets: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingPets = false);
+    }
+  }
+
+  Future<void> _addNewPet(Map<String, dynamic> animalNou) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/pets/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'owner_id': userId,
+          'name': animalNou['nume'],
+          'species': animalNou['specie'],
+          'breed': animalNou['rasa'],
+          'age': double.tryParse(animalNou['varsta'].toString()) ?? 0.0,
+          'weight': double.tryParse(animalNou['greutate'].toString()) ?? 0.0,
+          'photo_url': animalNou['pozaUrl'],
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _fetchPets();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(backgroundColor: Colors.red, content: Text('Eroare la salvarea animalului.')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error creating pet: $e');
+    }
+  }
+
+  Future<void> _deletePet(String petId) async {
+    try {
+      final response = await http.delete(Uri.parse('$baseUrl/api/pets/$petId'));
+      if (response.statusCode == 200) {
+        _fetchPets();
+      }
+    } catch (e) {
+      debugPrint('Error deleting pet: $e');
+    }
   }
 
   ImageProvider _getProfileImage() {
@@ -49,8 +135,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
       return MemoryImage(pet['pozaBytes']);
     }
     return NetworkImage(
-      pet['pozaUrl'] ??
-          'https://images.unsplash.com/photo-1543852786-1cf6624b9987',
+      pet['pozaUrl'] ?? 'https://images.unsplash.com/photo-1543852786-1cf6624b9987',
     );
   }
 
@@ -79,10 +164,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
             Expanded(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20.0,
-                    vertical: 12.0,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -105,20 +187,15 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                             const SizedBox(height: 3),
                             Text(
                               ownerInfo['bio']!,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[700],
-                              ),
+                              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 10),
                             OutlinedButton.icon(
                               onPressed: () async {
-                                final dateNoi =
-                                    await showDialog<Map<String, dynamic>>(
+                                final dateNoi = await showDialog<Map<String, dynamic>>(
                                   context: context,
-                                  builder: (_) =>
-                                      EditProfileDialog(currentInfo: ownerInfo),
+                                  builder: (_) => EditProfileDialog(currentInfo: ownerInfo),
                                 );
                                 if (dateNoi != null) {
                                   setState(() => ownerInfo = dateNoi);
@@ -134,17 +211,9 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                               ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFF1F6E6C),
-                                side: const BorderSide(
-                                  color: Color(0xFF1F6E6C),
-                                  width: 1.5,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 8,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
+                                side: const BorderSide(color: Color(0xFF1F6E6C), width: 1.5),
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                               ),
                             ),
                           ],
@@ -164,16 +233,18 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                       const SizedBox(height: 10),
                       SizedBox(
                         height: 145,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: myPets.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == myPets.length) {
-                              return _buildAddPetCard();
-                            }
-                            return _buildPetCard(context, myPets[index]);
-                          },
-                        ),
+                        child: _isLoadingPets
+                            ? const Center(child: CircularProgressIndicator())
+                            : ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: myPets.length + 1,
+                                itemBuilder: (context, index) {
+                                  if (index == myPets.length) {
+                                    return _buildAddPetCard();
+                                  }
+                                  return _buildPetCard(context, myPets[index]);
+                                },
+                              ),
                       ),
                     ],
                   ),
@@ -194,7 +265,11 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
           builder: (_) => PetDetailsDialog(pet: pet),
         );
         if (actiune == 'delete' || actiune == 'sterge') {
-          setState(() => myPets.remove(pet));
+          if (pet['id'] != null) {
+            _deletePet(pet['id']);
+          } else {
+            setState(() => myPets.remove(pet));
+          }
         }
       },
       child: Container(
@@ -242,7 +317,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
           builder: (_) => const AddPetDialog(),
         );
         if (animalNou != null) {
-          setState(() => myPets.add(animalNou));
+          _addNewPet(animalNou);
         }
       },
       child: Container(
