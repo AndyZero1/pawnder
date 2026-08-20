@@ -8,7 +8,7 @@ import models
 
 from s3_utils import upload_file_to_s3
 from routes import auth, admin, consultations, map, events, pets
-from backend.security import get_current_admin, get_current_user
+from security import get_current_admin, get_current_user
 
 models.Base.metadata.create_all(bind=engine)
 

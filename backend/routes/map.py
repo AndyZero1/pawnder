@@ -7,7 +7,7 @@ from pydantic import BaseModel
 import models
 from database import get_db
 from s3_utils import upload_file_to_s3
-from backend.security import get_current_user
+from security import get_current_user
 
 router = APIRouter(
     prefix="/api/map",
