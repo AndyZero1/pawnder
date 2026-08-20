@@ -153,34 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   }
 
-  Future<void> _quickDemoLogin() async {
-    setState(() => isLoading = true);
-    final baseUrl = ApiConstants.baseUrl;
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': 'adrian@pawnder.com',
-          'password': 'password123',
-        }),
-      ).timeout(const Duration(seconds: 4));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', data['token']);
-        await prefs.setString('user_id', data['user']['id']);
-        await prefs.setString('user_name', data['user']['username']);
-      }
-    } catch (_) {}
-
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -275,22 +248,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: isLoading ? () {} : _handleAuth,
                   ),
 
-                  if (isSignIn) ...[
+                  if (isSignIn)
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: _quickDemoLogin,
+                        onPressed: () {},
                         child: const Text(
-                          "Quick Demo Login 🚀",
+                          "Forgot password ?",
                           style: TextStyle(
-                            color: Color(0xFF1F6E6C),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                            color: Colors.red,
+                            fontSize: 12,
                           ),
                         ),
                       ),
                     ),
-                  ],
+
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
