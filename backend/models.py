@@ -1,9 +1,11 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, Boolean, DateTime, Enum, ForeignKey, Text, Float, Date
+from sqlalchemy import Column, String, Boolean, DateTime, Enum, ForeignKey, Text, Float, Date, Integer
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
 from database import Base
+from datetime import datetime
 
 # ENUMS
 class Role(str, enum.Enum):
@@ -37,8 +39,8 @@ class User(Base):
     rol = Column(Enum(Role), default=Role.OWNER)
     birth_date = Column(DateTime(timezone=True), nullable=True)
     is_premium = Column(Boolean, default=False)
-    is_identity_verified = Column(Boolean, default=False)
     id_card_url = Column(String(255), nullable=True)
+    is_identity_verified = Column(Boolean, default=False)
     photo_url = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -126,6 +128,7 @@ class MissingPetPost(Base):
     description = Column(Text, nullable=False)
     missing_date = Column(DateTime(timezone=True), nullable=False)
     status = Column(String(50), default="MISSING")
+    photo_url = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="missing_pet_posts")
@@ -140,6 +143,7 @@ class Event(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     date_hour = Column(DateTime(timezone=True), nullable=False)
+    end_date_hour = Column(DateTime(timezone=True), nullable=True)
 
     organizer = relationship("User", back_populates="events")
     location = relationship("Location", back_populates="events")
@@ -163,12 +167,33 @@ class ConsultationMessage(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     consultation_id = Column(String(36), ForeignKey("consultations.id", ondelete="CASCADE"), nullable=False)
     sender_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    content = Column(Text, nullable=False)
     status = Column(Enum(MessageStatus), default=MessageStatus.SENT)
     sent_at = Column(DateTime(timezone=True), server_default=func.now())
 
     consultation = relationship("Consultation", back_populates="messages")
     sender = relationship("User")
+
+class Review(Base):
+    __tablename__ = "reviews"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    location_id = Column(String(36), ForeignKey("locations.id", ondelete="CASCADE"), nullable=False)
+    nota = Column(Integer, nullable=False)
+    text = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    location = relationship("Location", backref="reviews")
+
+class EventAttendee(Base):
+    __tablename__ = "event_attendees"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    event_id = Column(String(36), ForeignKey("eveniments.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    joined_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")
+    event = relationship("Event", backref="attendees")
 
 class ForumPost(Base):
     __tablename__ = "forum_posts"
