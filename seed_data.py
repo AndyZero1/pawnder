@@ -61,8 +61,11 @@ def seed_database(db):
             "email": "elena@example.com",
             "birth_date": datetime(1996, 4, 12, tzinfo=timezone.utc),
             "photo_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80",
+            "id_card_url": "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=800&q=80",
+            "is_identity_verified": False,
             "bio": "Loving dog mom and weekend park runner! 🏃‍♀️🐾",
             "pets": [
+
                 {
                     "name": "Bella",
                     "species": "Dog",
@@ -177,6 +180,8 @@ def seed_database(db):
                 rol=models.Role.OWNER,
                 birth_date=o_data["birth_date"],
                 photo_url=o_data["photo_url"],
+                id_card_url=o_data.get("id_card_url"),
+                is_identity_verified=o_data.get("is_identity_verified", False),
                 bio=o_data["bio"]
             )
             db.add(user)

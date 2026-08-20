@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import '../constants/api_constants.dart';
 import 'login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -12,8 +15,11 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  
-  final List<Map<String, dynamic>> _cereriVerificare = [
+  List<Map<String, dynamic>> _pendingIdentities = [];
+  bool _isLoadingIdentities = true;
+  String? _identitiesError;
+
+  final List<Map<String, dynamic>> _cereriClinici = [
     {
       'id': '1',
       'nume': 'Pipera Veterinary Clinic',
@@ -40,7 +46,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     },
   ];
 
-  // --- MODERATION: REPORTED USERS ---
   final List<Map<String, dynamic>> _utilizatoriRaportati = [
     {
       'nume': 'Spammer Bot',
@@ -53,7 +58,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+    _fetchPendingIdentities();
   }
 
   @override
@@ -62,14 +68,161 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     super.dispose();
   }
 
+  Future<void> _fetchPendingIdentities() async {
+    setState(() {
+      _isLoadingIdentities = true;
+      _identitiesError = null;
+    });
+
+    final baseUrl = ApiConstants.baseUrl;
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/pending-identities/'),
+      ).timeout(const Duration(seconds: 10));
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _pendingIdentities = data.map((e) => Map<String, dynamic>.from(e)).toList();
+          _isLoadingIdentities = false;
+        });
+      } else {
+        setState(() {
+          _identitiesError = 'Status: ${response.statusCode}';
+          _isLoadingIdentities = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _identitiesError = '$e';
+        _isLoadingIdentities = false;
+      });
+    }
+  }
+
+  Future<void> _approveIdentity(String userId, String username) async {
+    final baseUrl = ApiConstants.baseUrl;
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/admin/approve-identity/$userId'),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _pendingIdentities.removeWhere((item) => item['id'] == userId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Identity for $username approved successfully! 🟢'),
+            backgroundColor: const Color(0xFF2ECC40),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error approving identity: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connection error: $e')),
+      );
+    }
+  }
+
+  Future<void> _rejectIdentity(String userId, String username) async {
+    final baseUrl = ApiConstants.baseUrl;
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/admin/reject-identity/$userId'),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _pendingIdentities.removeWhere((item) => item['id'] == userId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Document for $username rejected.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error rejecting: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connection error: $e')),
+      );
+    }
+  }
+
+  void _showDocumentPreview(String imageUrl, String username) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'ID Document - $username',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    padding: const EdgeInsets.all(40),
+                    child: const Column(
+                      children: [
+                        Icon(Icons.broken_image, size: 60, color: Colors.grey),
+                        SizedBox(height: 8),
+                        Text('Document image unavailable'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8D7DF), 
+      backgroundColor: const Color(0xFFF8D7DF),
       body: SafeArea(
         child: Column(
           children: [
-            
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               decoration: const BoxDecoration(
@@ -87,8 +240,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
                         children: [
                           Text(
                             "Pawnder",
@@ -97,9 +249,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                               color: const Color(0xFF1F6E6C),
                             ),
                           ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1F6E6C).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              "Admin Panel",
+                              style: TextStyle(
+                                color: Color(0xFF1F6E6C),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                      // Logout
                       ElevatedButton(
                         onPressed: () {
                           Navigator.pushReplacement(
@@ -118,28 +285,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     ],
                   ),
                   const SizedBox(height: 15),
-                  
                   TabBar(
                     controller: _tabController,
                     indicatorColor: const Color(0xFF1F6E6C),
                     labelColor: const Color(0xFF1F6E6C),
                     unselectedLabelColor: Colors.grey[600],
-                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     tabs: const [
-                      Tab(icon: Icon(Icons.pending_actions_rounded), text: "Verification Requests"),
-                      Tab(icon: Icon(Icons.gavel_rounded), text: "Moderation Tools"),
+                      Tab(icon: Icon(Icons.badge_outlined), text: "ID Verification"),
+                      Tab(icon: Icon(Icons.local_hospital_outlined), text: "Clinics & Vets"),
+                      Tab(icon: Icon(Icons.gavel_rounded), text: "Moderation"),
                     ],
                   ),
                 ],
               ),
             ),
-
-           
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildVerificariTab(),
+                  _buildIdentitiesTab(),
+                  _buildCliniciTab(),
                   _buildModerareTab(),
                 ],
               ),
@@ -150,12 +316,203 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  
-  Widget _buildVerificariTab() {
-    if (_cereriVerificare.isEmpty) {
+  Widget _buildIdentitiesTab() {
+    if (_isLoadingIdentities) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF1F6E6C)),
+      );
+    }
+
+    if (_identitiesError != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 50, color: Color(0xFF1F6E6C)),
+            const SizedBox(height: 12),
+            Text('Eroare: $_identitiesError'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchPendingIdentities,
+              child: const Text('Try again'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_pendingIdentities.isEmpty) {
       return const Center(
         child: Text(
-          "No pending verification requests 🎉",
+          "No pending ID verification requests",
+          style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchPendingIdentities,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _pendingIdentities.length,
+        itemBuilder: (context, index) {
+          final user = _pendingIdentities[index];
+          final String userId = user['id'] ?? '';
+          final String username = user['username'] ?? 'User';
+          final String email = user['email'] ?? '';
+          final int age = user['age'] ?? 18;
+          final String idCardUrl = user['id_card_url'] ?? '';
+          final String dateStr = user['created_at'] ?? 'Azi';
+
+          return Card(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            margin: const EdgeInsets.only(bottom: 14),
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: const Color(0xFF1F6E6C).withValues(alpha: 0.1),
+                            child: const Icon(Icons.person, color: Color(0xFF1F6E6C)),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                username,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              Text(
+                                email,
+                                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.amber[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.amber),
+                        ),
+                        child: const Text(
+                          "Pending Review",
+                          style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Text("Age: $age yrs", style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+                      const SizedBox(width: 16),
+                      Text("Date: $dateStr", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (idCardUrl.isNotEmpty) ...[
+                    GestureDetector(
+                      onTap: () => _showDocumentPreview(idCardUrl, username),
+                      child: Container(
+                        height: 140,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.network(
+                                idCardUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  color: Colors.grey[100],
+                                  child: const Center(
+                                    child: Icon(Icons.badge, size: 40, color: Colors.grey),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: 8,
+                                bottom: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black87,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.zoom_in, color: Colors.white, size: 14),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        "View Document",
+                                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  const Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _rejectIdentity(userId, username),
+                        icon: const Icon(Icons.close, size: 16),
+                        label: const Text("Reject", style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => _approveIdentity(userId, username),
+                        icon: const Icon(Icons.check, size: 16),
+                        label: const Text("Approve Identity", style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2ECC40),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCliniciTab() {
+    if (_cereriClinici.isEmpty) {
+      return const Center(
+        child: Text(
+          "No pending clinic verification requests",
           style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold),
         ),
       );
@@ -163,9 +520,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _cereriVerificare.length,
+      itemCount: _cereriClinici.length,
       itemBuilder: (context, index) {
-        final cerere = _cereriVerificare[index];
+        final cerere = _cereriClinici[index];
         return Card(
           color: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -204,11 +561,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    // Reject
                     TextButton(
                       onPressed: () {
                         setState(() {
-                          _cereriVerificare.removeAt(index);
+                          _cereriClinici.removeAt(index);
                         });
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Verification request rejected.')),
@@ -217,11 +573,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       child: const Text("Reject", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(width: 8),
-                    // Approve
                     ElevatedButton(
                       onPressed: () {
                         setState(() {
-                          _cereriVerificare.removeAt(index);
+                          _cereriClinici.removeAt(index);
                         });
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Clinic successfully verified! 🟢')),
@@ -244,15 +599,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-
-
   Widget _buildModerareTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          
           const Row(
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.orange),
@@ -263,8 +615,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           const SizedBox(height: 10),
           _buildReportedAnnouncements(),
           const SizedBox(height: 25),
-
-          
           const Row(
             children: [
               Icon(Icons.person_outline, color: Colors.red),
@@ -278,7 +628,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       ),
     );
   }
-
 
   Widget _buildReportedAnnouncements() {
     if (_anunturiRaportate.isEmpty) {
@@ -358,7 +707,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  
   Widget _buildReportedUsers() {
     if (_utilizatoriRaportati.isEmpty) {
       return const Card(
