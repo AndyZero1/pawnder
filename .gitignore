@@ -1,3 +1,13 @@
+# Python and DB related
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+*.db
+*.sqlite
+*.sqlite3
+
 # Miscellaneous
 *.class
 *.log
