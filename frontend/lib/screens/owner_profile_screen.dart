@@ -64,7 +64,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
           'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
       'bio': user['bio'] ?? 'Pet lover, Pawnder member.',
       'email': user['email'] ?? '',
-      'dataNasterii': user['birth_date'] ?? '',
+      'dataNasterii': user['date_of_birth'] ?? user['birth_date'] ?? '',
       'pozaBytes': null,
     };
 
@@ -165,7 +165,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
           ownerInfo['nume'] = data['username'] ?? ownerInfo['nume'];
           ownerInfo['email'] = data['email'] ?? ownerInfo['email'];
           ownerInfo['bio'] = data['bio'] ?? ownerInfo['bio'];
-          ownerInfo['dataNasterii'] = data['birth_date'] ?? '';
+          ownerInfo['dataNasterii'] = data['date_of_birth'] ?? data['birth_date'] ?? '';
           if (data['photo_url'] != null && data['photo_url'].toString().isNotEmpty) {
             ownerInfo['pozaUrl'] = data['photo_url'];
           }
@@ -205,7 +205,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
           'username': dateNoi['username'] ?? dateNoi['nume'],
           'email': dateNoi['email'],
           'bio': dateNoi['bio'],
-          'birth_date': dateNoi['dataNasterii'],
+          'date_of_birth': dateNoi['dataNasterii'],
           'photo_url': photoUrl,
         }),
       );
