@@ -21,7 +21,7 @@ Future<Map<String, dynamic>?> showAddEventForm(
       return StatefulBuilder(
         builder: (context, setState) {
           String getFormattedStart() {
-            if (selectedDate == null || startTime == null) return 'Alege data și ora de start';
+            if (selectedDate == null || startTime == null) return 'Select start date & time';
             final day = selectedDate!.day.toString().padLeft(2, '0');
             final month = selectedDate!.month.toString().padLeft(2, '0');
             final h = startTime!.hour.toString().padLeft(2, '0');
@@ -30,7 +30,7 @@ Future<Map<String, dynamic>?> showAddEventForm(
           }
 
           String getFormattedEnd() {
-            if (endTime == null) return 'Alege ora de încheiere';
+            if (endTime == null) return 'Select end time';
             final h = endTime!.hour.toString().padLeft(2, '0');
             final m = endTime!.minute.toString().padLeft(2, '0');
             return '$h:$m';
@@ -42,7 +42,7 @@ Future<Map<String, dynamic>?> showAddEventForm(
               children: [
                 Icon(Icons.event, color: Colors.purpleAccent, size: 28),
                 SizedBox(width: 10),
-                Text('Nou Eveniment', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                Text('New Event', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               ],
             ),
             content: SingleChildScrollView(
@@ -52,7 +52,7 @@ Future<Map<String, dynamic>?> showAddEventForm(
                   TextField(
                     controller: nameController,
                     decoration: InputDecoration(
-                      labelText: 'Nume (ex: Joacă în parc)',
+                      labelText: 'Name (e.g., Park Playdate)',
                       prefixIcon: const Icon(Icons.celebration, color: Colors.purpleAccent),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -79,7 +79,7 @@ Future<Map<String, dynamic>?> showAddEventForm(
                         children: [
                           const Icon(Icons.calendar_month, color: Colors.blueAccent),
                           const SizedBox(width: 12),
-                          Expanded(child: Text('Începe: ${getFormattedStart()}', style: TextStyle(color: selectedDate != null ? Colors.black87 : Colors.grey.shade700))),
+                          Expanded(child: Text('Starts: ${getFormattedStart()}', style: TextStyle(color: selectedDate != null ? Colors.black87 : Colors.grey.shade700))),
                         ],
                       ),
                     ),
@@ -88,7 +88,7 @@ Future<Map<String, dynamic>?> showAddEventForm(
                   InkWell(
                     onTap: () async {
                       if (selectedDate == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alege întâi data de start!')));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select start date first!')));
                         return;
                       }
                       final pickedTime = await showTimePicker(context: context, initialTime: startTime ?? TimeOfDay.now());
@@ -102,7 +102,7 @@ Future<Map<String, dynamic>?> showAddEventForm(
                         children: [
                           const Icon(Icons.timer_off, color: Colors.redAccent),
                           const SizedBox(width: 12),
-                          Expanded(child: Text('Se termină la: ${getFormattedEnd()}', style: TextStyle(color: endTime != null ? Colors.black87 : Colors.grey.shade700))),
+                          Expanded(child: Text('Ends at: ${getFormattedEnd()}', style: TextStyle(color: endTime != null ? Colors.black87 : Colors.grey.shade700))),
                         ],
                       ),
                     ),
@@ -110,17 +110,17 @@ Future<Map<String, dynamic>?> showAddEventForm(
                   const SizedBox(height: 12),
                   TextField(
                     controller: detailsController, maxLines: 3,
-                    decoration: InputDecoration(labelText: 'Detalii', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                    decoration: InputDecoration(labelText: 'Details', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                   ),
                 ],
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Anulează', style: TextStyle(color: Colors.grey))),
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
               ElevatedButton(
                 onPressed: () async {
                   if (nameController.text.trim().isEmpty || selectedDate == null || startTime == null || endTime == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Completează toate datele!'), backgroundColor: Colors.redAccent));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in all fields!'), backgroundColor: Colors.redAccent));
                     return;
                   }
                   
@@ -135,7 +135,7 @@ Future<Map<String, dynamic>?> showAddEventForm(
                     DateTime endDateTime = DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day, endTime!.hour, endTime!.minute);
 
                     final prefs = await SharedPreferences.getInstance();
-                    final String? token = prefs.getString('auth_token');
+                    final String? token = prefs.getString('jwt_token'); // <-- Corectat
                     
                     final String apiUrl = 'http://127.0.0.1:8000/api/events/create/';
 
@@ -155,6 +155,7 @@ Future<Map<String, dynamic>?> showAddEventForm(
                       }),
                     );
 
+                    if (!context.mounted) return;
                     Navigator.pop(context);
 
                     if (response.statusCode == 200 || response.statusCode == 201) {
@@ -166,15 +167,16 @@ Future<Map<String, dynamic>?> showAddEventForm(
                         'expiraLa': endDateTime, 
                       });
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Eroare salvare: ${response.statusCode}')));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save error: ${response.statusCode}')));
                     }
                   } catch (e) {
+                    if (!context.mounted) return;
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Eroare de conexiune la server.')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Server connection error.')));
                   }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent),
-                child: const Text('Creează', style: TextStyle(color: Colors.white)),
+                child: const Text('Create', style: TextStyle(color: Colors.white)),
               ),
             ],
           );

@@ -19,13 +19,13 @@ Future<String?> showAddGemForm(
           children: [
             Icon(Icons.diamond, color: Colors.amber, size: 28),
             SizedBox(width: 10),
-            Text('Ascunde Comoara', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
+            Text('Hide a Gem', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
           ],
         ),
         content: TextField(
           controller: nameController,
           decoration: InputDecoration(
-            labelText: 'Numele locului (ex: Parcul X)',
+            labelText: 'Location name (e.g., Central Park)',
             prefixIcon: const Icon(Icons.location_on, color: Colors.green),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -33,13 +33,13 @@ Future<String?> showAddGemForm(
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Anulează', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Numele locului este obligatoriu!'), backgroundColor: Colors.redAccent),
+                  const SnackBar(content: Text('Location name is required!'), backgroundColor: Colors.redAccent),
                 );
                 return;
               }
@@ -52,7 +52,7 @@ Future<String?> showAddGemForm(
 
               try {
                 final prefs = await SharedPreferences.getInstance();
-                final String? token = prefs.getString('auth_token');
+                final String? token = prefs.getString('jwt_token'); // <-- Corectat
                 
                 final String apiUrl = 'http://127.0.0.1:8000/api/map/add-gem/';
 
@@ -77,7 +77,7 @@ Future<String?> showAddGemForm(
                   Navigator.of(context).pop(nameController.text.trim());
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Eroare salvare: ${response.statusCode}')),
+                    SnackBar(content: Text('Save error: ${response.statusCode}')),
                   );
                 }
               } catch (e) {
@@ -85,7 +85,7 @@ Future<String?> showAddGemForm(
 
                 Navigator.pop(context); 
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Eroare de conexiune la server.')),
+                  const SnackBar(content: Text('Server connection error.')),
                 );
               }
             },
@@ -93,7 +93,7 @@ Future<String?> showAddGemForm(
               backgroundColor: Colors.amber,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Ascunde', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('Hide', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       );

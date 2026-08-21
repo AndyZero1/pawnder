@@ -26,7 +26,7 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
               children: [
                 Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
                 SizedBox(width: 10),
-                Text('Animal Pierdut', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                Text('Lost Pet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               ],
             ),
             content: SingleChildScrollView(
@@ -62,7 +62,7 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
                               children: [
                                 Icon(Icons.add_photo_alternate, color: Colors.orange, size: 35),
                                 SizedBox(height: 5),
-                                Text('Apasă pentru galerie', style: TextStyle(color: Colors.orange, fontSize: 13, fontWeight: FontWeight.bold)),
+                                Text('Tap to add photo', style: TextStyle(color: Colors.orange, fontSize: 13, fontWeight: FontWeight.bold)),
                               ],
                             )
                           : null,
@@ -72,7 +72,7 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
                   TextField(
                     controller: nameController,
                     decoration: InputDecoration(
-                      labelText: 'Nume / Rasă animal',
+                      labelText: 'Name / Breed',
                       prefixIcon: const Icon(Icons.pets),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -82,7 +82,7 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
                     controller: phoneController,
                     keyboardType: TextInputType.phone, 
                     decoration: InputDecoration(
-                      labelText: 'Telefon de contact',
+                      labelText: 'Contact Phone',
                       prefixIcon: const Icon(Icons.phone, color: Colors.green),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -92,7 +92,7 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
                     controller: detailsController,
                     maxLines: 3,
                     decoration: InputDecoration(
-                      labelText: 'Detalii',
+                      labelText: 'Details',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
@@ -102,12 +102,12 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Anulează', style: TextStyle(color: Colors.grey)),
+                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
               ),
               ElevatedButton(
                 onPressed: () async {
                   if (nameController.text.trim().isEmpty || phoneController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Numele și telefonul sunt obligatorii!')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name and phone are required!')));
                     return;
                   }
 
@@ -117,13 +117,11 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
                     builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.orange)),
                   );
 
-                  try {
+try {
                     final prefs = await SharedPreferences.getInstance();
-                    final String? token = prefs.getString('auth_token');
-                    
-                    // ATENȚIE: Serverul cere user_id explicit aici. Asigură-te că la login îl salvați cu prefs.setString('user_id', ...)
-                    final String userId = prefs.getString('user_id') ?? '0'; 
+                    final String? token = prefs.getString('jwt_token'); 
 
+                    // Avem grija ca linkul sa aiba SLASH / la final ca sa evitam redirectul (307)
                     final uri = Uri.parse('http://127.0.0.1:8000/api/map/report-missing/');
                     var request = http.MultipartRequest('POST', uri);
 
@@ -131,14 +129,12 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
                       request.headers['Authorization'] = 'Bearer $token';
                     }
 
-                    // Adăugăm câmpurile text
-                    request.fields['user_id'] = userId;
+                    // Nu mai trimitem user_id aici!
                     request.fields['latitude'] = lat.toString();
                     request.fields['longitude'] = lng.toString();
-                    request.fields['description'] = "Nume/Rasă: ${nameController.text.trim()}\nTelefon: ${phoneController.text.trim()}\nDetalii: ${detailsController.text.trim()}";
+                    request.fields['description'] = "Name/Breed: ${nameController.text.trim()}\nPhone: ${phoneController.text.trim()}\nDetails: ${detailsController.text.trim()}";
                     request.fields['missing_date'] = DateTime.now().toIso8601String();
 
-                    // Adăugăm poza dacă există
                     if (imageBytes != null) {
                       request.files.add(
                         http.MultipartFile.fromBytes('file', imageBytes!, filename: 'pet_image.jpg'),
@@ -148,7 +144,8 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
                     var streamedResponse = await request.send();
                     var response = await http.Response.fromStream(streamedResponse);
 
-                    Navigator.pop(context); 
+                    if (!context.mounted) return;
+                    Navigator.pop(context); // close loader
 
                     if (response.statusCode == 200 || response.statusCode == 201) {
                       Navigator.of(context).pop({
@@ -158,18 +155,19 @@ Future<Map<String, dynamic>?> showAddLostPetForm(
                         'poza': imageBytes, 
                       });
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Eroare salvare: ${response.statusCode}')));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save error: ${response.statusCode}')));
                     }
                   } catch (e) {
+                    if (!context.mounted) return;
                     Navigator.pop(context); 
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Eroare de conexiune la server.')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Server connection error.')));
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange, 
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('Raportează', style: TextStyle(color: Colors.white)),
+                child: const Text('Report', style: TextStyle(color: Colors.white)),
               ),
             ],
           );

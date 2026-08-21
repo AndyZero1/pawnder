@@ -4,11 +4,12 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class EventDetailsScreen extends StatefulWidget {
-  final String eventId; // NOU: ID-ul evenimentului (ca serverul să știe unde suntem)
+  final String eventId; 
   final String eventName;
   final String location;
   final String myName; 
   final String myPetInfo; 
+  final bool isOrganizer;
 
   const EventDetailsScreen({
     super.key,
@@ -17,6 +18,7 @@ class EventDetailsScreen extends StatefulWidget {
     required this.location,
     required this.myName,
     required this.myPetInfo,
+    required this.isOrganizer,
   });
 
   @override
@@ -34,87 +36,75 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    // Adăugăm temporar utilizatorul curent în listă până se încarcă de pe server
-    _members = [
-      {"name": "${widget.myName} (Tu)", "pet": widget.myPetInfo},
-    ];
-    
-    // Cerem datele de la server la deschiderea paginii
+    _members = [];
     _fetchEventData();
   }
 
-  // 👇 1. FUNCȚIA CARE ADUCE CHAT-UL ȘI PARTICIPANȚII DE PE SERVER
   Future<void> _fetchEventData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('auth_token');
+      final String? token = prefs.getString('jwt_token'); 
       
       final headers = {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       };
 
-  final membersUrl = 'http://127.0.0.1:8000/api/events/${widget.eventId}/members/';
-  final chatUrl = 'http://127.0.0.1:8000/api/events/${widget.eventId}/chat/';
-      // Cerem participanții
+      final membersUrl = 'http://127.0.0.1:8000/api/events/${widget.eventId}/members/';
+      final chatUrl = 'http://127.0.0.1:8000/api/events/${widget.eventId}/chat/';
+      
       final membersResponse = await http.get(Uri.parse(membersUrl), headers: headers);
       if (membersResponse.statusCode == 200) {
         List<dynamic> serverMembers = jsonDecode(membersResponse.body);
         setState(() {
-          _members = serverMembers.map((m) => {
-            "name": m['user_name'] ?? 'Necunoscut',
-            "pet": m['pet_details'] ?? 'Fără animal',
+          _members = serverMembers.map((m) {
+            bool isMe = m['is_me'] == true;
+            return {
+              "name": isMe ? "${m['user_name']} (You)" : (m['user_name'] ?? 'Unknown'),
+              "pet": m['pet_details'] ?? 'No pet',
+            };
           }).toList();
-          
-          // Ne asigurăm că și tu ești pe listă
-          bool iAmInList = _members.any((m) => m['name'].toString().contains(widget.myName));
-          if (!iAmInList) {
-             _members.insert(0, {"name": "${widget.myName} (Tu)", "pet": widget.myPetInfo});
-          }
         });
       }
 
-      // Cerem mesajele
       final chatResponse = await http.get(Uri.parse(chatUrl), headers: headers);
       if (chatResponse.statusCode == 200) {
         List<dynamic> serverChat = jsonDecode(chatResponse.body);
         setState(() {
           _messages = serverChat.map((msg) => {
-            "name": msg['user_name'] ?? 'Necunoscut',
+            "name": msg['user_name'] ?? 'Unknown',
             "text": msg['message'] ?? '',
-            "isMe": msg['user_name'] == widget.myName, // Verificăm dacă mesajul e al tău
-            "time": msg['timestamp'] ?? 'Acum', // Preferabil serverul trimite ora (ex: 14:20)
+            "isMe": msg['is_me'] == true, 
+            "time": msg['timestamp'] ?? 'Now', 
           }).toList();
         });
       }
     } catch (e) {
-      print("Eroare la aducerea datelor: $e");
+      print("Error fetching data: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // 👇 2. FUNCȚIA CARE TRIMITE MESAJUL PE SERVER
   Future<void> _sendMessage() async {
     final text = _chatController.text.trim();
     if (text.isEmpty) return;
 
-    // Afișăm mesajul instant pe ecran (pentru fluiditate)
     setState(() {
       _messages.add({
-        "name": widget.myName,
+        "name": "Sending...",
         "text": text,
         "isMe": true,
-        "time": "Se trimite...",
+        "time": "...",
       });
       _chatController.clear();
     });
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('auth_token');
+      final String? token = prefs.getString('jwt_token'); 
       
-     final String chatUrl = 'http://127.0.0.1:8000/api/events/${widget.eventId}/chat/';
+      final String chatUrl = 'http://127.0.0.1:8000/api/events/${widget.eventId}/chat/';
 
       final response = await http.post(
         Uri.parse(chatUrl),
@@ -126,13 +116,41 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Dacă s-a trimis cu succes, putem face un refresh ca să luăm ora exactă de pe server
         _fetchEventData();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Eroare la trimiterea mesajului.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error sending message.')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lipsă conexiune la internet.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No internet connection.')));
+    }
+  }
+
+  // FUNCȚIA DE ȘTERGERE EVENIMENT
+  Future<void> _deleteEvent() async {
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+      
+      final response = await http.delete(
+        Uri.parse('http://127.0.0.1:8000/api/events/${widget.eventId}/delete/'),
+        headers: {'Content-Type': 'application/json', if (token != null) 'Authorization': 'Bearer $token'},
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // close loader
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event canceled successfully.')));
+        Navigator.pop(context); // Go back to events list
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${response.statusCode}')));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Connection error.')));
     }
   }
 
@@ -153,14 +171,40 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
               Text(widget.location, style: const TextStyle(fontSize: 12, color: Colors.white70)),
             ],
           ),
+          actions: [
+            if (widget.isOrganizer)
+              IconButton(
+                icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Cancel Event?'),
+                      content: const Text('Are you sure you want to cancel and delete this event? This action cannot be undone.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('No')),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _deleteEvent();
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                          child: const Text('Yes, Cancel', style: TextStyle(color: Colors.white)),
+                        )
+                      ],
+                    ),
+                  );
+                },
+              )
+          ],
           bottom: const TabBar(
             indicatorColor: Colors.white,
             indicatorWeight: 3,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
             tabs: [
-              Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Chat Grup'),
-              Tab(icon: Icon(Icons.people_alt_outlined), text: 'Participanți'),
+              Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Group Chat'),
+              Tab(icon: Icon(Icons.people_alt_outlined), text: 'Attendees'),
             ],
           ),
         ),
@@ -181,7 +225,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       children: [
         Expanded(
           child: _messages.isEmpty 
-          ? const Center(child: Text('Fii primul care lasă un mesaj!', style: TextStyle(color: Colors.grey)))
+          ? const Center(child: Text('Be the first to leave a message!', style: TextStyle(color: Colors.grey)))
           : ListView.builder(
             padding: const EdgeInsets.all(15),
             itemCount: _messages.length,
@@ -240,7 +284,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                   child: TextField(
                     controller: _chatController,
                     decoration: InputDecoration(
-                      hintText: 'Scrie un mesaj grupului...',
+                      hintText: 'Message the group...',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(25), borderSide: BorderSide.none),
                       filled: true,
                       fillColor: Colors.grey.shade100,
@@ -281,7 +325,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
               child: Icon(Icons.person, color: primaryColor),
             ),
             title: Text(member['name']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('Vine cu: ${member['pet']}'),
+            subtitle: Text('Brings: ${member['pet']}'),
             trailing: IconButton(
               icon: const Icon(Icons.pets, color: Colors.grey),
               onPressed: () {},

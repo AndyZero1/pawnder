@@ -53,11 +53,12 @@ void showPetSelectionSheet(BuildContext context, String eventId, String eventNam
                       context,
                       MaterialPageRoute(
                         builder: (context) => EventDetailsScreen(
-                          eventId: eventId, // <-- ADAUGAT AICI PENTRU SERVER
+                          eventId: eventId,
                           eventName: eventName,
                           location: 'Vii cu: ${pet['nume']}', 
                           myName: userName, 
                           myPetInfo: '${pet['rasa']} - ${pet['nume']}', 
+                          isOrganizer: false,
                         ),
                       ),
                     );
