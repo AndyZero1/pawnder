@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import 'screens/pet_matching_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/owner_profile_screen.dart'; // sau profile_screen.dart dacă așa e numit fișierul
+import 'screens/owner_profile_screen.dart';
 import 'screens/consultation_screen.dart';
 
 PageRouteBuilder smoothRoute(Widget page) {
@@ -27,13 +26,11 @@ PageRouteBuilder smoothRoute(Widget page) {
 class ModernNavBar extends StatelessWidget {
   final String currentPage;
   final VoidCallback onMapTap;
-  final Map<String, dynamic> userData;
 
   const ModernNavBar({
     super.key,
     required this.currentPage,
     required this.onMapTap,
-    this.userData = const {}, // Nu mai forțează eroare dacă e omis
   });
 
   @override
@@ -56,6 +53,7 @@ class ModernNavBar extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
+            // Logo on the left
             Align(
               alignment: Alignment.centerLeft,
               child: GestureDetector(
@@ -63,7 +61,7 @@ class ModernNavBar extends StatelessWidget {
                   if (currentPage != 'Main Page') {
                     Navigator.pushReplacement(
                       context,
-                      smoothRoute(HomeScreen(userData: userData)),
+                      smoothRoute(const HomeScreen()),
                     );
                   }
                 },
@@ -96,6 +94,8 @@ class ModernNavBar extends StatelessWidget {
                 ),
               ),
             ),
+
+            // Navigation items centered
             Center(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -110,7 +110,7 @@ class ModernNavBar extends StatelessWidget {
                         if (currentPage != 'Main Page') {
                           Navigator.pushReplacement(
                             context,
-                            smoothRoute(HomeScreen(userData: userData)),
+                            smoothRoute(const HomeScreen()),
                           );
                         }
                       },
@@ -124,7 +124,7 @@ class ModernNavBar extends StatelessWidget {
                         if (currentPage != 'My Profile') {
                           Navigator.pushReplacement(
                             context,
-                            smoothRoute(OwnerProfileScreen(userData: userData)),
+                            smoothRoute(OwnerProfileScreen()),
                           );
                         }
                       },
@@ -145,7 +145,7 @@ class ModernNavBar extends StatelessWidget {
                         if (currentPage != 'Tinder') {
                           Navigator.pushReplacement(
                             context,
-                            smoothRoute(PetMatchingScreen(userData: userData)),
+                            smoothRoute(const PetMatchingScreen()),
                           );
                         }
                       },
@@ -159,7 +159,7 @@ class ModernNavBar extends StatelessWidget {
                         if (currentPage != 'Consultations') {
                           Navigator.pushReplacement(
                             context,
-                            smoothRoute(ConsultationScreen(userData: userData)),
+                            smoothRoute(const ConsultationScreen()),
                           );
                         }
                       },

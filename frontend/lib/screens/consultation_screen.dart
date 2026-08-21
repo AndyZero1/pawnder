@@ -308,7 +308,6 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
           children: [
             ModernNavBar(
               currentPage: 'Consultations',
-              userData: widget.userData,
               onMapTap: () => Navigator.push(
                 context,
                 smoothRoute(MapScreen(myPets: const [], userName: username)),

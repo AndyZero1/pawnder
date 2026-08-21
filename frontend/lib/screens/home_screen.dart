@@ -64,7 +64,6 @@ class HomeScreen extends StatelessWidget {
           children: [
             ModernNavBar(
               currentPage: 'Main Page',
-              userData: userData,
               onMapTap: () => Navigator.push(
                 context,
                 smoothRoute(
