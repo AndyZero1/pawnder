@@ -18,24 +18,20 @@ router = APIRouter(
 
 @router.post("/report-missing/")
 async def report_missing_pet(
-    user_id: str = Form(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
     description: str = Form(...),
     missing_date: datetime = Form(...),
     file: UploadFile = File(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
-
     photo_link = None
     if file:
         photo_link = upload_file_to_s3(file, folder="missing_pets")
 
     new_location = models.Location(
-        title=f"Missing Pet - Reported by {user.username}",
+        title=f"Missing Pet - Reported by {current_user.username}",
         description=description,
         type=models.LocationType.MISSING_PET,
         latitude=latitude,
@@ -45,7 +41,7 @@ async def report_missing_pet(
     db.flush() 
 
     new_post = models.MissingPetPost(
-        user_id=user.id,
+        user_id=current_user.id,
         location_id=new_location.id,
         description=description,
         missing_date=missing_date,

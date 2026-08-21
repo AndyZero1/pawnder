@@ -17,6 +17,7 @@ class LocationType(str, enum.Enum):
     PET_FRIENDLY = "PET_FRIENDLY"
     VET_CLINIC = "VET_CLINIC"
     HIDDEN_GEM = "HIDDEN_GEM"
+    MISSING_PET = "MISSING_PET"
 
 class MessageStatus(str, enum.Enum):
     SENT = "SENT"

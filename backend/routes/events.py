@@ -31,13 +31,9 @@ class EventUpdate(BaseModel):
 @router.post("/create/")
 def create_event(
     data: EventBase, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
-
-    current_user = db.query(models.User).first()
-    if not current_user:
-        raise HTTPException(status_code=400, detail="Nu există niciun user în baza de date!")
-
     new_location = models.Location(
         title=data.name,
         description=data.details,
@@ -59,6 +55,7 @@ def create_event(
     db.add(new_event)
     db.flush()
 
+    # Organizatorul devine automat participant
     first_attendee = models.EventAttendee(event_id=new_event.id, user_id=current_user.id)
     db.add(first_attendee)
 
@@ -66,15 +63,12 @@ def create_event(
     return {"message": "Event created successfully!", "event_id": new_event.id}
 
 # vizibilitate la locatii din apropiere
-
 @router.get("/nearby/")
 def get_nearby_events(
     min_lat: float, max_lat: float, min_lon: float, max_lon: float,
     db: Session = Depends(get_db),
-   # current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
-    current_user = db.query(models.User).first()
-    
     events = db.query(models.Event).join(models.Location).filter(
         models.Location.latitude >= min_lat,
         models.Location.latitude <= max_lat,
@@ -86,7 +80,11 @@ def get_nearby_events(
     for ev in events:
         organizer = ev.organizer
         loc = ev.location
-        attendees_count = db.query(models.EventAttendee).filter(models.EventAttendee.event_id == ev.id).count()
+
+        attendees_count = db.query(models.EventAttendee).join(models.User).filter(
+            models.EventAttendee.event_id == ev.id,
+            models.User.username != "admin.pawnder"
+        ).count()
         
         is_participating = db.query(models.EventAttendee).filter(
             models.EventAttendee.event_id == ev.id,
@@ -104,13 +102,13 @@ def get_nearby_events(
             "longitude": loc.longitude,
             "organizer": {"id": organizer.id, "name": organizer.username},
             "attendees_count": attendees_count,
-            "is_participating": is_participating
+            "is_participating": is_participating,
+            "is_organizer": organizer.id == current_user.id
         })
 
     return result
 
 # actualizare eveniment
-
 @router.put("/{event_id}/update/")
 def update_event(
     event_id: str,
@@ -140,7 +138,6 @@ def update_event(
     return {"message": "Event updated successfully!"}
 
 # optiunea de stergere eveniment (daca esti organizator)
-
 @router.delete("/{event_id}/delete/")
 def delete_event(
     event_id: str,
@@ -155,6 +152,10 @@ def delete_event(
         raise HTTPException(status_code=403, detail="Not authorized to delete this event.")
 
     location = event.location
+
+    db.query(models.EventAttendee).filter(models.EventAttendee.event_id == event_id).delete()
+    db.query(models.EventMessage).filter(models.EventMessage.event_id == event_id).delete()
+
     db.delete(event)
     if location:
         db.delete(location)
@@ -163,15 +164,12 @@ def delete_event(
     return {"message": "Event deleted successfully."}
 
 # optiunea de join
-
 @router.post("/{event_id}/join/")
 def join_event(
     event_id: str,
     db: Session = Depends(get_db),
-    #current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
-    current_user = db.query(models.User).first()
-
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     
     if not event:
@@ -191,7 +189,6 @@ def join_event(
     return {"message": "Successfully joined the event!"}
 
 # optiunea de leave
-
 @router.delete("/{event_id}/leave/")
 def leave_event(
     event_id: str,
@@ -210,33 +207,40 @@ def leave_event(
     db.commit()
     return {"message": "You left the event."}
 
-
 class ChatCreate(BaseModel):
     message: str
 
+
 @router.get("/{event_id}/members/")
-def get_event_members(event_id: str, db: Session = Depends(get_db)):
-    
+def get_event_members(
+    event_id: str, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     attendees = db.query(models.EventAttendee).filter(models.EventAttendee.event_id == event_id).all()
     
     result = []
     for att in attendees:
         user = att.user
-        pet_name = user.pets[0].name if user.pets else "Fără animal"
+
+        if user.username == "admin.pawnder" or user.rol == "ADMIN":
+            continue
+            
+        pet_name = user.pets[0].name if user.pets else "No pet"
         
         result.append({
             "user_name": user.username,
-            "pet_details": pet_name
+            "pet_details": pet_name,
+            "is_me": user.id == current_user.id
         })
     return result
 
 # partea de conv
-
 @router.get("/{event_id}/chat/")
 def get_event_chat(
     event_id: str, 
     db: Session = Depends(get_db),
-    #current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     messages = db.query(models.EventMessage).filter(
         models.EventMessage.event_id == event_id
@@ -246,7 +250,8 @@ def get_event_chat(
         {
             "user_name": msg.user.username,
             "message": msg.message,
-            "timestamp": msg.timestamp.strftime("%H:%M")
+            "timestamp": msg.timestamp.strftime("%H:%M"),
+            "is_me": msg.user_id == current_user.id
         }
         for msg in messages
     ]
@@ -256,10 +261,8 @@ def post_event_chat(
     event_id: str, 
     data: ChatCreate, 
     db: Session = Depends(get_db),
-    #current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
-    current_user = db.query(models.User).first()
-
     new_msg = models.EventMessage(
         event_id=event_id,
         user_id=current_user.id,
