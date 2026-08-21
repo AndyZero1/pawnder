@@ -10,6 +10,11 @@ from s3_utils import upload_file_to_s3
 from routes import auth, admin, consultations, map, events, pets
 from security import get_current_admin, get_current_user
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+os.makedirs("uploads", exist_ok=True)
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -41,13 +46,4 @@ def root():
         "docs": "/docs"
     }
 
-@app.on_event("startup")
-def startup_seed():
-    db = SessionLocal()
-    try:
-        from seed_data import seed_database
-        seed_database(db)
-    except Exception as e:
-        print(f"Seed note: {e}")
-    finally:
-        db.close()
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

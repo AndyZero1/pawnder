@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../constants/api_constants.dart';
 import '../constants/colors.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/auth_toggle.dart';
