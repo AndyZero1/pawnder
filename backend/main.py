@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import date
 
-from database import engine, get_db, SessionLocal
+from database import engine, get_db
 import models
 
 from s3_utils import upload_file_to_s3
@@ -40,14 +40,3 @@ def root():
         "message": "Pawnder API is running! 🐾",
         "docs": "/docs"
     }
-
-@app.on_event("startup")
-def startup_seed():
-    db = SessionLocal()
-    try:
-        from seed_data import seed_database
-        seed_database(db)
-    except Exception as e:
-        print(f"Seed note: {e}")
-    finally:
-        db.close()
