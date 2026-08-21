@@ -703,7 +703,7 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       const Center(
                         child: Text(
-                          'Pawndar',
+                          'Pawnder',
                           style: TextStyle(
                             color: Colors.black87,
                             fontWeight: FontWeight.w900,

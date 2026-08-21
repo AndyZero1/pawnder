@@ -17,7 +17,7 @@ class UserProfileUpdate(BaseModel):
     username: Optional[str] = None
     email: Optional[str] = None
     bio: Optional[str] = None
-    birth_date: Optional[str] = None
+    date_of_birth: Optional[str] = None
     photo_url: Optional[str] = None
 
 @router.post("/upload-photo")
@@ -46,7 +46,7 @@ def get_user_profile(user_id: str, db: Session = Depends(get_db)):
         "rol": user.rol.value if hasattr(user.rol, 'value') else user.rol,
         "is_premium": user.is_premium,
         "photo_url": user.photo_url,
-        "birth_date": user.birth_date.strftime("%d/%m/%Y") if user.birth_date else "",
+        "date_of_birth": user.date_of_birth.strftime("%d/%m/%Y") if user.date_of_birth else "",
     }
 
 @router.put("/{user_id}")
@@ -63,9 +63,9 @@ def update_user_profile(user_id: str, payload: UserProfileUpdate, db: Session = 
         user.bio = payload.bio
     if payload.photo_url is not None:
         user.photo_url = payload.photo_url
-    if payload.birth_date:
+    if payload.date_of_birth:
         try:
-            user.birth_date = datetime.strptime(payload.birth_date, "%d/%m/%Y")
+            user.date_of_birth = datetime.strptime(payload.date_of_birth, "%d/%m/%Y")
         except ValueError:
             pass
 
@@ -78,5 +78,5 @@ def update_user_profile(user_id: str, payload: UserProfileUpdate, db: Session = 
         "email": user.email,
         "bio": user.bio or "",
         "photo_url": user.photo_url,
-        "birth_date": user.birth_date.strftime("%d/%m/%Y") if user.birth_date else "",
+        "date_of_birth": user.date_of_birth.strftime("%d/%m/%Y") if user.date_of_birth else "",
     }

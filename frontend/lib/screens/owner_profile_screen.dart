@@ -1,54 +1,100 @@
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import '../constants/api_constants.dart';
+import 'package:http_parser/http_parser.dart';
+
 import '../modern_nav_bar.dart';
 import '../map_screen.dart';
-import '../widgets/edit_profile_dialog.dart';
-import '../widgets/pet_details_dialog.dart';
-import '../widgets/add_pet_dialog.dart';
+import '../dialogs/edit_profile_dialog.dart';
+import '../dialogs/pet_details_dialog.dart';
+import '../dialogs/add_pet_dialog.dart';
 
 class OwnerProfileScreen extends StatefulWidget {
-
   final Map<String, dynamic>? userData;
 
-  const OwnerProfileScreen({super.key, this.userData});
+  const OwnerProfileScreen({super.key, this.userData = const {}});
 
   @override
   State<OwnerProfileScreen> createState() => _OwnerProfileScreenState();
 }
 
 class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
-  Map<String, dynamic> ownerInfo = {
-    'nume': 'Adrian Olteanu',
-    'username': '',
-    'pozaUrl':
-        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-    'bio': 'Animal lover, tech enthusiast.',
-    'email': 'adrian@pawnder.com',
-    'dataNasterii': '20/05/1998',
-    'pozaBytes': null,
-  };
+  late Map<String, dynamic> ownerInfo;
+  List<Map<String, dynamic>> myPets = [];
+  bool _isLoadingPets = false;
 
   bool isIdentityVerified = false;
   bool isDocumentPending = false;
   bool isUploadingDoc = false;
 
-  final List<Map<String, dynamic>> myPets = [
-    {
-      'nume': 'Luna',
-      'rasa': 'Golden Retriever',
-      'specie': 'Dog',
-      'varsta': 2.5,
-      'greutate': 28,
-      'pozaUrl':
-          'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=1000&q=80',
-      'vaccinari': <Map<String, dynamic>>[],
-      'documenteMedicale': <Map<String, dynamic>>[],
-    },
-  ];
+  String get baseUrl {
+    if (kIsWeb) return 'http://localhost:8000';
+    if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+    return 'http://localhost:8000';
+  }
+
+  String get userId {
+    final data = widget.userData ?? {};
+    if (data['user'] != null && data['user'] is Map) {
+      return data['user']['id']?.toString() ?? data['user']['user_id']?.toString() ?? '';
+    }
+    return data['id']?.toString() ?? data['user_id']?.toString() ?? '';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final user = (widget.userData?['user'] is Map)
+        ? widget.userData!['user']
+        : (widget.userData ?? {});
+
+    isIdentityVerified = user['is_identity_verified'] == true;
+    isDocumentPending = (user['id_card_url'] != null && user['id_card_url'].toString().isNotEmpty) && !isIdentityVerified;
+
+    ownerInfo = {
+      'id': userId,
+      'nume': user['username'] ?? 'User',
+      'username': user['username'] ?? '',
+      'pozaUrl': user['photo_url'] ??
+          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+      'bio': user['bio'] ?? 'Pet lover, Pawnder member.',
+      'email': user['email'] ?? '',
+      'dataNasterii': user['birth_date'] ?? '',
+      'pozaBytes': null,
+    };
+
+    _fetchUserProfile();
+    _fetchPets();
+  }
+
+  Future<String?> _uploadImageBytes(Uint8List bytes, String filename) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/users/upload-photo');
+      final request = http.MultipartRequest('POST', uri);
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: filename,
+          contentType: MediaType('image', 'jpeg'),
+        ),
+      );
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['url'];
+      }
+    } catch (e) {
+      debugPrint('Upload error: $e');
+    }
+    return null;
+  }
 
   Future<void> _uploadIdCard() async {
     try {
@@ -59,20 +105,13 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
       );
 
       if (result == null || result.files.isEmpty) return;
-
       final file = result.files.first;
       if (file.bytes == null) return;
 
       setState(() => isUploadingDoc = true);
 
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('user_id') ?? '10000000-0000-0000-0000-000000000001';
-
-      final baseUrl = ApiConstants.baseUrl;
-      final uri = Uri.parse('$baseUrl/api/upload/id-card/');
-
+      final uri = Uri.parse('$baseUrl/api/admin/upload-id/$userId');
       final request = http.MultipartRequest('POST', uri);
-      request.fields['user_id'] = userId;
       request.files.add(
         http.MultipartFile.fromBytes(
           'file',
@@ -115,6 +154,154 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
     }
   }
 
+  Future<void> _fetchUserProfile() async {
+    if (userId.isEmpty) return;
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/users/$userId'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          ownerInfo['username'] = data['username'] ?? ownerInfo['username'];
+          ownerInfo['nume'] = data['username'] ?? ownerInfo['nume'];
+          ownerInfo['email'] = data['email'] ?? ownerInfo['email'];
+          ownerInfo['bio'] = data['bio'] ?? ownerInfo['bio'];
+          ownerInfo['dataNasterii'] = data['birth_date'] ?? '';
+          if (data['photo_url'] != null && data['photo_url'].toString().isNotEmpty) {
+            ownerInfo['pozaUrl'] = data['photo_url'];
+          }
+          isIdentityVerified = data['is_identity_verified'] == true;
+          if (data['id_card_url'] != null && data['id_card_url'].toString().isNotEmpty && !isIdentityVerified) {
+            isDocumentPending = true;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching user profile: $e');
+    }
+  }
+
+  Future<void> _updateUserProfile(Map<String, dynamic> dateNoi) async {
+    String? photoUrl = dateNoi['pozaUrl'];
+    
+    if (dateNoi['pozaBytes'] != null) {
+      final uploadedUrl = await _uploadImageBytes(dateNoi['pozaBytes'], 'avatar.jpg');
+      if (uploadedUrl != null) {
+        photoUrl = uploadedUrl;
+      }
+    }
+
+    setState(() {
+      ownerInfo = Map.from(dateNoi);
+      if (photoUrl != null) ownerInfo['pozaUrl'] = photoUrl;
+    });
+
+    if (userId.isEmpty) return;
+
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/users/$userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': dateNoi['username'] ?? dateNoi['nume'],
+          'email': dateNoi['email'],
+          'bio': dateNoi['bio'],
+          'birth_date': dateNoi['dataNasterii'],
+          'photo_url': photoUrl,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        _fetchUserProfile();
+      }
+    } catch (e) {
+      debugPrint('Error updating profile: $e');
+    }
+  }
+
+  Future<void> _fetchPets() async {
+    if (userId.isEmpty) return;
+    setState(() => _isLoadingPets = true);
+
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/pets/$userId'));
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        setState(() {
+          myPets = data.map((item) => {
+            'id': item['id'],
+            'nume': item['name'],
+            'rasa': item['breed'] ?? '',
+            'specie': item['species'] ?? '',
+            'varsta': item['age']?.toString() ?? '0',
+            'greutate': item['weight']?.toString() ?? '0',
+            'pozaUrl': item['photo_url'] ?? 'https://images.unsplash.com/photo-1543852786-1cf6624b9987',
+            'pozaBytes': null,
+          }).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching pets: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingPets = false);
+    }
+  }
+
+  Future<void> _addNewPet(Map<String, dynamic> animalNou) async {
+    String? photoUrl = animalNou['pozaUrl'];
+    
+    if (animalNou['pozaBytes'] != null) {
+      final uploaded = await _uploadImageBytes(animalNou['pozaBytes'], 'pet.jpg');
+      if (uploaded != null) photoUrl = uploaded;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/pets/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'owner_id': userId,
+          'name': animalNou['nume'],
+          'species': animalNou['specie'],
+          'breed': animalNou['rasa'],
+          'age': double.tryParse(animalNou['varsta'].toString()) ?? 0.0,
+          'weight': double.tryParse(animalNou['greutate'].toString()) ?? 0.0,
+          'photo_url': photoUrl,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _fetchPets();
+      }
+    } catch (e) {
+      debugPrint('Error creating pet: $e');
+    }
+  }
+
+  Future<void> _deletePet(String petId) async {
+    try {
+      final response = await http.delete(Uri.parse('$baseUrl/api/pets/$petId'));
+      if (response.statusCode == 200) {
+        _fetchPets();
+      }
+    } catch (e) {
+      debugPrint('Error deleting pet: $e');
+    }
+  }
+
+  ImageProvider _getProfileImage() {
+    if (ownerInfo['pozaBytes'] != null) {
+      return MemoryImage(ownerInfo['pozaBytes']);
+    }
+    return NetworkImage(ownerInfo['pozaUrl']);
+  }
+
+  ImageProvider _getPetImage(Map<String, dynamic> pet) {
+    if (pet['pozaBytes'] != null) {
+      return MemoryImage(pet['pozaBytes']);
+    }
+    return NetworkImage(pet['pozaUrl'] ?? 'https://images.unsplash.com/photo-1543852786-1cf6624b9987');
+  }
+
   @override
   Widget build(BuildContext context) {
     final String numeAfisat =
@@ -129,6 +316,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
           children: [
             ModernNavBar(
               currentPage: 'My Profile',
+              userData: widget.userData ?? {},
               onMapTap: () => Navigator.push(
                 context,
                 smoothRoute(
@@ -139,10 +327,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
             Expanded(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20.0,
-                    vertical: 12.0,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -151,11 +336,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                           children: [
                             CircleAvatar(
                               radius: 46,
-                              backgroundImage:
-                                  ownerInfo['pozaBytes'] != null
-                                      ? MemoryImage(ownerInfo['pozaBytes'])
-                                            as ImageProvider
-                                      : NetworkImage(ownerInfo['pozaUrl']),
+                              backgroundImage: _getProfileImage(),
                             ),
                             const SizedBox(height: 10),
                             Text(
@@ -168,24 +349,19 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              ownerInfo['bio']!,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[700],
-                              ),
+                              ownerInfo['bio'] ?? '',
+                              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 10),
                             OutlinedButton.icon(
                               onPressed: () async {
-                                final dateNoi =
-                                    await showDialog<Map<String, dynamic>>(
+                                final dateNoi = await showDialog<Map<String, dynamic>>(
                                   context: context,
-                                  builder: (_) =>
-                                      EditProfileDialog(currentInfo: ownerInfo),
+                                  builder: (_) => EditProfileDialog(currentInfo: ownerInfo),
                                 );
                                 if (dateNoi != null) {
-                                  setState(() => ownerInfo = dateNoi);
+                                  _updateUserProfile(dateNoi);
                                 }
                               },
                               icon: const Icon(Icons.edit_outlined, size: 15),
@@ -198,27 +374,23 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                               ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFF1F6E6C),
-                                side: const BorderSide(
-                                    color: Color(0xFF1F6E6C), width: 1.5),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 18, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20)),
+                                side: const BorderSide(color: Color(0xFF1F6E6C), width: 1.5),
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                               ),
                             ),
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 16),
-                      Divider(color: Colors.black.withValues(alpha: 0.08)),
+                      Divider(color: Colors.black.withOpacity(0.08)),
                       const SizedBox(height: 12),
 
-                      // Identity Verification Card
+                      // Identity Verification Section
                       _buildIdentityVerificationSection(),
 
                       const SizedBox(height: 16),
-                      Divider(color: Colors.black.withValues(alpha: 0.08)),
+                      Divider(color: Colors.black.withOpacity(0.08)),
                       const SizedBox(height: 12),
 
                       Text(
@@ -230,19 +402,20 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-
                       SizedBox(
                         height: 145,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: myPets.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == myPets.length) {
-                              return _buildAddPetCard();
-                            }
-                            return _buildPetCard(context, myPets[index]);
-                          },
-                        ),
+                        child: _isLoadingPets
+                            ? const Center(child: CircularProgressIndicator())
+                            : ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: myPets.length + 1,
+                                itemBuilder: (context, index) {
+                                  if (index == myPets.length) {
+                                    return _buildAddPetCard();
+                                  }
+                                  return _buildPetCard(context, myPets[index]);
+                                },
+                              ),
                       ),
                     ],
                   ),
@@ -263,7 +436,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -273,10 +446,10 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
         children: [
           CircleAvatar(
             backgroundColor: isIdentityVerified
-                ? const Color(0xFF2ECC40).withValues(alpha: 0.15)
+                ? const Color(0xFF2ECC40).withOpacity(0.15)
                 : (isDocumentPending
-                    ? Colors.amber.withValues(alpha: 0.15)
-                    : const Color(0xFF1F6E6C).withValues(alpha: 0.15)),
+                    ? Colors.amber.withOpacity(0.15)
+                    : const Color(0xFF1F6E6C).withOpacity(0.15)),
             child: Icon(
               isIdentityVerified
                   ? Icons.verified
@@ -304,7 +477,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                       ? "Your identity is verified ✅"
                       : (isDocumentPending
                           ? "Document pending review ⏳"
-                          : "Upload ID card to verify identity"),
+                          : "Upload ID card to verify identity (18+)"),
                   style: TextStyle(
                     color: isIdentityVerified
                         ? const Color(0xFF2ECC40)
@@ -349,8 +522,12 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
           context: context,
           builder: (_) => PetDetailsDialog(pet: pet),
         );
-        if (actiune == 'sterge' || actiune == 'delete') {
-          setState(() => myPets.remove(pet));
+        if (actiune == 'delete' || actiune == 'sterge') {
+          if (pet['id'] != null) {
+            _deletePet(pet['id']);
+          } else {
+            setState(() => myPets.remove(pet));
+          }
         }
       },
       child: Container(
@@ -361,7 +538,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -372,17 +549,17 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
           children: [
             CircleAvatar(
               radius: 40,
-              backgroundImage: pet['pozaBytes'] != null
-                  ? MemoryImage(pet['pozaBytes']) as ImageProvider
-                  : NetworkImage(
-                      pet['pozaUrl'] ??
-                          'https://images.unsplash.com/photo-1543852786-1cf6624b9987',
-                    ),
+              backgroundImage: _getPetImage(pet),
             ),
             const SizedBox(height: 10),
             Text(
-              pet['nume'],
+              pet['nume'] ?? '',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            Text(
+              pet['rasa'] ?? '',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -393,47 +570,33 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
   Widget _buildAddPetCard() {
     return GestureDetector(
       onTap: () async {
-        final dateAnimalNou = await showDialog<Map<String, dynamic>>(
+        final animalNou = await showDialog<Map<String, dynamic>>(
           context: context,
           builder: (_) => const AddPetDialog(),
         );
-        if (dateAnimalNou != null) {
-          setState(() => myPets.add(dateAnimalNou));
+        if (animalNou != null) {
+          _addNewPet(animalNou);
         }
       },
       child: Container(
         width: 120,
-        margin: const EdgeInsets.only(right: 15, bottom: 5),
+        margin: const EdgeInsets.only(bottom: 5),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withOpacity(0.5),
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: const Color(0xFF1F6E6C),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          border: Border.all(color: const Color(0xFF1F6E6C), width: 1.5),
         ),
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 35,
-              backgroundColor: Color(0xFFF8D7DF),
-              child: Icon(Icons.add, size: 30, color: Color(0xFF1F6E6C)),
-            ),
-            SizedBox(height: 10),
+            Icon(Icons.add, color: Color(0xFF1F6E6C), size: 40),
+            SizedBox(height: 8),
             Text(
               'Add Pet',
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
                 color: Color(0xFF1F6E6C),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
