@@ -137,6 +137,7 @@ class ModernNavBar extends StatelessWidget {
                       onTap: onMapTap,
                     ),
                     const SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     _navItem(
                       context,
                       'Tinder',
@@ -150,20 +151,22 @@ class ModernNavBar extends StatelessWidget {
                         }
                       },
                     ),
-                    const SizedBox(width: 8),
-                    _navItem(
-                      context,
-                      'Consultations',
-                      isActive: currentPage == 'Consultations',
-                      onTap: () {
-                        if (currentPage != 'Consultations') {
-                          Navigator.pushReplacement(
-                            context,
-                            smoothRoute(ConsultationScreen(userData: userData)),
-                          );
-                        }
-                      },
-                    ),
+                    if (_isPremiumUser) ...[
+                      const SizedBox(width: 8),
+                      _navItem(
+                        context,
+                        'Consultations',
+                        isActive: currentPage == 'Consultations',
+                        onTap: () {
+                          if (currentPage != 'Consultations') {
+                            Navigator.pushReplacement(
+                              context,
+                              smoothRoute(ConsultationScreen(userData: userData)),
+                            );
+                          }
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -172,6 +175,22 @@ class ModernNavBar extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  bool get _isPremiumUser {
+    final role = (userData['rol'] ??
+            userData['role'] ??
+            (userData['user'] is Map ? userData['user']['rol'] ?? userData['user']['role'] : null))
+        ?.toString()
+        .toUpperCase();
+    if (role == 'VETERINARY' || role == 'ADMIN') return true;
+
+    if (userData['is_premium'] == true || userData['is_premium'] == 1) return true;
+    if (userData['user'] is Map &&
+        (userData['user']['is_premium'] == true || userData['user']['is_premium'] == 1)) {
+      return true;
+    }
+    return false;
   }
 
   Widget _navItem(

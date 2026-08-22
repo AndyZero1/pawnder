@@ -32,6 +32,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
   bool isIdentityVerified = false;
   bool isDocumentPending = false;
   bool isUploadingDoc = false;
+  bool isPremium = false;
 
   String get baseUrl {
     if (kIsWeb) return 'http://localhost:8000';
@@ -56,6 +57,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
 
     isIdentityVerified = user['is_identity_verified'] == true;
     isDocumentPending = (user['id_card_url'] != null && user['id_card_url'].toString().isNotEmpty) && !isIdentityVerified;
+    isPremium = user['is_premium'] == true || user['is_premium'] == 1 || widget.userData?['is_premium'] == true;
 
     ownerInfo = {
       'id': userId,
@@ -171,6 +173,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
             ownerInfo['pozaUrl'] = data['photo_url'];
           }
           isIdentityVerified = data['is_identity_verified'] == true;
+          isPremium = data['is_premium'] == true || data['is_premium'] == 1;
           if (data['id_card_url'] != null && data['id_card_url'].toString().isNotEmpty && !isIdentityVerified) {
             isDocumentPending = true;
           }
@@ -340,13 +343,29 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                               backgroundImage: _getProfileImage(),
                             ),
                             const SizedBox(height: 10),
-                            Text(
-                              numeAfisat,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  numeAfisat,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                if (isPremium) ...[
+                                  const SizedBox(width: 5),
+                                  const Tooltip(
+                                    message: 'Premium Member',
+                                    child: Icon(
+                                      Icons.star_rounded,
+                                      size: 22,
+                                      color: Color(0xFFFFB800),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                             const SizedBox(height: 3),
                             Text(
@@ -383,6 +402,13 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      Divider(color: Colors.black.withOpacity(0.08)),
+                      const SizedBox(height: 12),
+
+                      // Premium Section
+                      _buildPremiumSection(),
+
                       const SizedBox(height: 16),
                       Divider(color: Colors.black.withOpacity(0.08)),
                       const SizedBox(height: 12),
@@ -425,6 +451,61 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumSection() {
+    if (isPremium) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF1F6E6C).withValues(alpha: 0.2), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: const Color(0xFF1F6E6C).withValues(alpha: 0.12),
+            radius: 20,
+            child: const Icon(Icons.workspace_premium, color: Color(0xFF1F6E6C), size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pawnder Premium',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: const Color(0xFF1F6E6C),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Upgrade your account to unlock Veterinary Consultations.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

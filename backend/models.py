@@ -76,6 +76,8 @@ class Pet(Base):
     breed = Column(String(100), nullable=True)
     age = Column(Float, nullable=True)
     weight = Column(Float, nullable=True)
+    description = Column(Text, nullable=True)
+    location = Column(String(100), nullable=True)
     photo_url = Column(String(256), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -219,3 +221,61 @@ class ForumPost(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     author = relationship("User")
+
+
+class PetSwipe(Base):
+    __tablename__ = "pet_swipes"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    swiper_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    target_pet_id = Column(String(36), ForeignKey("pets.id", ondelete="CASCADE"), nullable=False)
+    is_like = Column(Boolean, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    swiper = relationship("User", foreign_keys=[swiper_id])
+    target_pet = relationship("Pet", foreign_keys=[target_pet_id])
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")
+
+
+class PetMatch(Base):
+    """Stores a confirmed mutual match between two users."""
+    __tablename__ = "pet_matches"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user1_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user2_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    pet1_id = Column(String(36), ForeignKey("pets.id", ondelete="CASCADE"), nullable=True)
+    pet2_id = Column(String(36), ForeignKey("pets.id", ondelete="CASCADE"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user1 = relationship("User", foreign_keys=[user1_id])
+    user2 = relationship("User", foreign_keys=[user2_id])
+    pet1 = relationship("Pet", foreign_keys=[pet1_id])
+    pet2 = relationship("Pet", foreign_keys=[pet2_id])
+    messages = relationship("MatchMessage", back_populates="match", cascade="all, delete-orphan")
+
+
+class MatchMessage(Base):
+    """A chat message sent inside a pet match conversation."""
+    __tablename__ = "match_messages"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    match_id = Column(String(36), ForeignKey("pet_matches.id", ondelete="CASCADE"), nullable=False)
+    sender_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    content = Column(Text, nullable=False)
+    sent_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    match = relationship("PetMatch", back_populates="messages")
+    sender = relationship("User", foreign_keys=[sender_id])

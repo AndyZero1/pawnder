@@ -39,14 +39,11 @@ class _PetMatchingScreenState extends State<PetMatchingScreen> {
   }
 
   Future<String?> _getOrFetchToken() async {
-    print("🐾 [MATCHING] 1. Caut token-ul in telefon...");
     final prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('auth_token');
 
     if (token == null || token.isEmpty) {
-      print("🐾 [MATCHING] 2. Nu am token! Incerc auto-login cu adrian@pawnder.com...");
       try {
-        print("🐾 [MATCHING] Trimit cerere login catre: $baseUrl/api/auth/login");
         final response = await http.post(
           Uri.parse('$baseUrl/api/auth/login'),
           headers: {'Content-Type': 'application/json'},
@@ -55,24 +52,17 @@ class _PetMatchingScreenState extends State<PetMatchingScreen> {
             'password': 'password123',
           }),
         ).timeout(const Duration(seconds: 4));
-
-        print("🐾 [MATCHING] Status login: ${response.statusCode}");
         
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
-          token = data['token']; // ATENTIE: Verifica daca backend-ul returneaza 'token' sau 'access_token'
+          token = data['token'];
           if (token != null) {
             await prefs.setString('auth_token', token);
-            print("🐾 [MATCHING] 3. Auto-login REUSIT! Am salvat token-ul.");
           }
-        } else {
-          print("🐾 [MATCHING] ❌ Auto-login ESUAT! Raspuns server: ${response.body}");
         }
       } catch (e) {
-        print('🐾 [MATCHING] ❌ Eroare retea la auto-login: $e');
+        debugPrint('Auto-login network error: $e');
       }
-    } else {
-      print("🐾 [MATCHING] 2. Token gasit in telefon. Mergem mai departe!");
     }
     return token;
   }
@@ -87,16 +77,14 @@ class _PetMatchingScreenState extends State<PetMatchingScreen> {
       final token = await _getOrFetchToken();
 
       if (token == null) {
-        print("🐾 [MATCHING] ❌ STOP! Token-ul este null. Nu se mai trimite cererea la /matching/!");
         if (!mounted) return;
         setState(() {
-          errorMessage = 'Eroare de autentificare.\nNu m-am putut conecta la $baseUrl';
+          errorMessage = 'Authentication required.\nCould not connect to $baseUrl';
           isLoading = false;
         });
         return;
       }
 
-      print("🐾 [MATCHING] 4. Am token! Trimit cererea la: $baseUrl/api/pets/matching/");
       final response = await http.get(
         Uri.parse('$baseUrl/api/pets/matching/'),
         headers: {
@@ -104,13 +92,10 @@ class _PetMatchingScreenState extends State<PetMatchingScreen> {
         },
       ).timeout(const Duration(seconds: 6));
 
-      print("🐾 [MATCHING] 5. Raspuns de la /matching/: ${response.statusCode}");
-
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        print("🐾 [MATCHING] 6. Am primit ${data.length} animale!");
 
         setState(() {
           pets = data.map((pet) => Map<String, dynamic>.from(pet)).toList();
@@ -124,7 +109,6 @@ class _PetMatchingScreenState extends State<PetMatchingScreen> {
         });
       }
     } catch (e) {
-      print('🐾 [MATCHING] ❌ EROARE CONEXIUNE MATCHING: $e');
       if (!mounted) return;
       setState(() {
         errorMessage = 'Connection error ($baseUrl): $e';
